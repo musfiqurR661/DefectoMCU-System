@@ -1,0 +1,17 @@
+# Frontend ignores
+node_modules/
+dist/
+npm-debug.log
+yarn-error.log
+.env
+
+# Backend ignores
+__pycache__/
+backend/__pycache__/
+*.pyc
+backend/venv/
+.pytest_cache/
+
+# System ignores
+.DS_Store
+Thumbs.db
