@@ -1707,7 +1707,7 @@ const DefectoMCUDashboardLight = () => {
 
         try {
             // HOSTING NOTE: Upload korar por nicher Link ta change korte hobe
-            const response = await fetch('https://defectomcu-api.onrender.com/predict', {
+            const response = await fetch('https://mrt661-defectomcu-api.hf.space/predict', {
                 method: 'POST',
                 body: formData,
             });
