@@ -1,1678 +1,24 @@
-// import React, { useState, useRef } from 'react';
-// import { Camera, Printer, RotateCcw, Activity, Server, AlertTriangle, CheckCircle, Database, Cpu, Power, Scan, Download, Wifi, Eye, FileText, ThumbsUp, ThumbsDown } from 'lucide-react';
-
-// const DefectoMCUDashboardV7 = () => {
-//   // --- States ---
-//   const [systemState, setSystemState] = useState('idle');
-//   const [selectedImage, setSelectedImage] = useState(null);
-//   const [currentResult, setCurrentResult] = useState(null);
-//   const [logs, setLogs] = useState([]);
-//   const [stats, setStats] = useState({ total: 0, passed: 0, defective: 0 });
-//   const [notification, setNotification] = useState(null);
-//   const [verificationStatus, setVerificationStatus] = useState(null);
-//   const fileInputRef = useRef(null);
-
-//   // --- Handlers ---
-
-//   const handleSensorTrigger = (event) => {
-//     const file = event.target.files[0];
-//     if (file) {
-//       const imageUrl = URL.createObjectURL(file);
-//       setSelectedImage(imageUrl);
-//       setVerificationStatus(null);
-//       startAnalysis(imageUrl, file);
-//     }
-//   };
-
-//   // This function now calls the Python Backend
-//   const startAnalysis = async (imageUrl, file) => {
-//     setSystemState('capturing');
-//     showNotification("Sensor Detected Object. Capturing Image...");
-
-//     setTimeout(async () => {
-//         setSystemState('analyzing');
-//         showNotification("Sending to Neural Engine (best.pt)...");
-
-//         const formData = new FormData();
-//         formData.append('file', file);
-
-//         try {
-//             // API CALL TO PYTHON BACKEND
-//             const response = await fetch('http://127.0.0.1:8000/predict', {
-//                 method: 'POST',
-//                 body: formData,
-//             });
-
-//             if (!response.ok) throw new Error("Backend connection failed");
-
-//             const resultData = await response.json();
-            
-//             // Add image URL for display
-//             resultData.imageUrl = imageUrl; 
-            
-//             processResult(resultData);
-
-//         } catch (error) {
-//             console.error(error);
-//             showNotification("Backend Error: Ensure 'main.py' is running!");
-//             // Fallback Simulation for demo
-//             simulateFallbackResult(imageUrl); 
-//         }
-//     }, 1500);
-//   };
-
-//   const processResult = (resultData) => {
-//     setCurrentResult(resultData);
-//     setSystemState('result');
-    
-//     const isGood = resultData.color === 'green';
-    
-//     setStats(prev => ({
-//       total: prev.total + 1,
-//       passed: isGood ? prev.passed + 1 : prev.passed,
-//       defective: !isGood ? prev.defective + 1 : prev.defective
-//     }));
-    
-//     setLogs(prev => [resultData, ...prev].slice(0, 10));
-//     showNotification(`Analysis Complete: ${resultData.status}`);
-//   };
-
-//   // Fallback if Python backend is not running
-//   const simulateFallbackResult = (imageUrl) => {
-//       const fallbackData = {
-//           id: `DEMO-${Math.floor(Math.random()*1000)}`,
-//           status: 'BACKEND ERROR',
-//           details: 'Check Python Server',
-//           color: 'red',
-//           timestamp: new Date().toLocaleTimeString(),
-//           confidence: 0,
-//           imageUrl: imageUrl,
-//           boundingBox: null
-//       };
-//       processResult(fallbackData);
-//   };
-
-//   // --- Utility Functions ---
-//   const handleDownloadLabel = () => {
-//     if (!currentResult) return;
-//     const canvas = document.createElement('canvas');
-//     canvas.width = 400; canvas.height = 200;
-//     const ctx = canvas.getContext('2d');
-    
-//     ctx.fillStyle = '#fff'; ctx.fillRect(0,0,400,200);
-//     ctx.strokeStyle = '#000'; ctx.lineWidth = 4; ctx.strokeRect(5,5,390,190);
-    
-//     ctx.fillStyle = '#000'; ctx.font = 'bold 18px Arial';
-//     ctx.fillText('DefectoMCU Inspection System', 20, 35);
-//     ctx.font = '14px monospace'; ctx.fillStyle = '#333';
-//     ctx.fillText(`ID: ${currentResult.id}`, 20, 65);
-//     ctx.font = '12px Arial'; ctx.fillText(`Time: ${currentResult.timestamp}`, 260, 65);
-    
-//     ctx.font = 'bold 32px Arial'; 
-//     ctx.fillStyle = currentResult.color === 'green' ? '#166534' : '#dc2626'; 
-//     ctx.fillText(`${currentResult.color === 'green' ? 'PASS' : 'FAIL'}`, 20, 110);
-    
-//     ctx.font = 'bold 14px Arial'; ctx.fillStyle = '#000';
-//     ctx.fillText(`Detected Class:`, 140, 95); 
-//     ctx.font = '16px Courier New'; 
-//     const displayClass = currentResult.details.length > 25 ? currentResult.details.substring(0,24)+'...' : currentResult.details;
-//     ctx.fillText(`${displayClass}`, 140, 115);
-    
-//     ctx.font = 'italic 12px Arial'; ctx.fillStyle = '#555';
-//     ctx.fillText(`Confidence: ${currentResult.confidence}%`, 140, 135);
-
-//     ctx.fillStyle = '#000'; 
-//     for(let i=20; i<370; i+=6) if(Math.random() > 0.1) ctx.fillRect(i, 160, 3, 25);
-    
-//     const link = document.createElement('a');
-//     link.download = `${currentResult.id}_label.png`;
-//     link.href = canvas.toDataURL();
-//     link.click();
-//   };
-
-//   const handleExportCSV = () => {
-//     if (logs.length === 0) { showNotification("No data to export."); return; }
-//     const headers = ["ID", "Time", "Status", "Class", "Confidence"];
-//     const csvContent = [
-//         headers.join(","),
-//         ...logs.map(log => `${log.id},${log.timestamp},${log.status},${log.details},${log.confidence}%`)
-//     ].join("\n");
-
-//     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-//     const link = document.createElement("a");
-//     link.href = URL.createObjectURL(blob);
-//     link.download = `logs.csv`;
-//     link.click();
-//   };
-
-//   const handleReset = () => {
-//     setSystemState('idle'); setSelectedImage(null); setCurrentResult(null); setVerificationStatus(null);
-//     if (fileInputRef.current) fileInputRef.current.value = '';
-//     showNotification("System Reset. Sensor Active.");
-//   };
-
-//   const handleVerification = (isCorrect) => {
-//       setVerificationStatus(isCorrect ? 'correct' : 'incorrect');
-//       showNotification(isCorrect ? "Verified: Correct" : "Flagged: Model Error");
-//   }
-
-//   const showNotification = (msg) => {
-//     setNotification(msg);
-//     setTimeout(() => setNotification(null), 3000);
-//   };
-
-//   return (
-//     <div className="min-h-screen bg-slate-900 text-slate-100 font-sans p-4 md:p-6 overflow-hidden flex flex-col">
-//       <header className="flex justify-between items-center mb-6 bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg">
-//         <div className="flex items-center gap-3">
-//           <div className="bg-blue-600 p-2 rounded-lg shadow-blue-500/20 shadow-lg"><Cpu size={24} className="text-white" /></div>
-//           <div><h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">DefectoMCU Monitor V7 (Live AI)</h1><p className="text-xs text-slate-400 flex items-center gap-1"><Wifi size={10} className="text-green-400" /> Connected to Neural Engine</p></div>
-//         </div>
-//         <div className="flex items-center gap-6"><div className="text-right"><div className="text-[10px] uppercase text-slate-500 font-bold tracking-wider">System Status</div><div className="flex items-center justify-end gap-2"><span className={`w-2 h-2 rounded-full ${systemState === 'idle' ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`}></span><span className="font-mono text-sm font-bold text-blue-200">{systemState === 'idle' ? 'SENSOR ONLINE' : systemState === 'capturing' ? 'CAPTURING...' : systemState === 'analyzing' ? 'PROCESSING...' : 'RESULT READY'}</span></div></div><div className="h-8 w-[1px] bg-slate-700"></div><Power size={20} className="text-slate-500 hover:text-white cursor-pointer transition-colors" /></div>
-//       </header>
-
-//       <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6">
-//         <section className="lg:col-span-8 flex flex-col gap-6">
-//           <div className="bg-black rounded-2xl overflow-hidden border-4 border-slate-700 shadow-2xl relative aspect-video flex items-center justify-center group">
-//             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-800 to-black z-0">
-//                {systemState === 'idle' && (<div className="w-full h-full flex flex-col items-center justify-center opacity-30"><Eye size={64} className="text-green-500/50 animate-pulse mb-4" /><div className="text-green-500/50 font-mono text-sm tracking-[0.2em] animate-pulse">SENSOR SEARCHING...</div><div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,255,0,0.05)_50%)] bg-[length:100%_4px]"></div></div>)}
-//             </div>
-//             {selectedImage && (<img src={selectedImage} alt="Captured PCB" className={`w-full h-full object-contain z-10 transition-opacity duration-500 ${systemState === 'capturing' ? 'opacity-50 blur-sm' : 'opacity-100'}`} />)}
-//             {systemState === 'capturing' && (<div className="absolute inset-0 bg-white/10 z-20 flex items-center justify-center"><div className="absolute inset-0 border-[20px] border-white/20 animate-pulse"></div><Camera size={48} className="text-white animate-bounce" /></div>)}
-//             {systemState === 'analyzing' && (<div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/40 backdrop-blur-[2px]"><div className="relative w-64 h-64 border-2 border-blue-500/50 rounded-lg overflow-hidden"><div className="absolute top-0 left-0 w-full h-1 bg-blue-400 shadow-[0_0_15px_rgba(96,165,250,1)] animate-[scan_1.5s_linear_infinite]"></div></div><div className="mt-4 flex items-center gap-2 text-blue-300 font-mono"><Activity size={16} className="animate-spin" /><span>YOLOv8 Inference Running...</span></div></div>)}
-            
-//             {/* Real Bounding Box Result */}
-//             {systemState === 'result' && currentResult && (
-//                <div className="absolute inset-0 z-20">
-//                    {currentResult.boundingBox && (
-//                       <div className="absolute border-4 border-red-500 shadow-[0_0_20px_red] transition-all duration-500"
-//                            style={{
-//                             top: currentResult.boundingBox.top,
-//                             left: currentResult.boundingBox.left,
-//                             width: currentResult.boundingBox.width,
-//                             height: currentResult.boundingBox.height
-//                            }}>
-//                          <span className="absolute -top-8 left-0 bg-red-600 text-white text-xs font-bold px-2 py-1 shadow-md">
-//                              {currentResult.details} ({currentResult.confidence}%)
-//                          </span>
-//                       </div>
-//                    )}
-//                    <div className={`absolute bottom-4 left-4 right-4 p-3 rounded-lg flex items-center justify-between backdrop-blur-md border ${currentResult.color === 'green' ? 'bg-green-900/60 border-green-500' : 'bg-red-900/60 border-red-500'}`}>
-//                        <div className="flex items-center gap-3">{currentResult.color === 'green' ? <CheckCircle className="text-green-400" /> : <AlertTriangle className="text-red-400" />}<div><div className={`font-bold text-lg ${currentResult.color === 'green' ? 'text-green-300' : 'text-red-300'}`}>{currentResult.status}</div><div className="text-xs text-slate-300 font-mono flex items-center gap-2"><span>Class: {currentResult.details}</span></div></div></div>
-//                        <div className="text-right"><div className="text-[10px] text-slate-400 uppercase tracking-widest">Confidence</div><div className={`text-xl font-black ${currentResult.confidence > 90 ? 'text-green-400' : 'text-yellow-400'}`}>{currentResult.confidence}%</div></div>
-//                    </div>
-//                </div>
-//             )}
-//             <div className="absolute top-4 left-4 bg-red-600/80 px-2 py-1 rounded text-[10px] font-bold tracking-widest flex items-center gap-1 z-40"><div className="w-2 h-2 bg-white rounded-full animate-pulse"></div> LIVE</div>
-//           </div>
-
-//           <div className="grid grid-cols-3 gap-4">
-//              <div className="relative group"><input type="file" ref={fileInputRef} onChange={handleSensorTrigger} accept="image/*" className="hidden" id="sensor-trigger" disabled={systemState !== 'idle'} /><label htmlFor="sensor-trigger" className={`h-full flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all cursor-pointer ${systemState === 'idle' ? 'bg-blue-600 border-blue-500 hover:bg-blue-500 shadow-lg hover:shadow-blue-500/25' : 'bg-slate-800 border-slate-700 opacity-50 cursor-not-allowed'}`}><Scan size={24} className="text-white mb-2" /><span className="font-bold text-white text-sm">Trigger Sensor</span><span className="text-[10px] text-blue-200">(Upload Image)</span></label></div>
-//              <button onClick={handleReset} className="bg-slate-800 border border-slate-700 hover:border-red-500 hover:bg-red-500/10 rounded-xl p-4 flex flex-col items-center justify-center transition-colors group"><RotateCcw size={24} className="text-slate-400 group-hover:text-red-400 transition-transform group-hover:-rotate-180" /><span className="mt-2 text-sm font-medium text-slate-300 group-hover:text-red-300">Reset System</span></button>
-//              <button onClick={handleDownloadLabel} disabled={systemState !== 'result'} className={`rounded-xl p-4 flex flex-col items-center justify-center border-2 transition-all ${systemState === 'result' ? 'bg-emerald-900/30 border-emerald-500 cursor-pointer hover:bg-emerald-900/50' : 'bg-slate-800 border-slate-700 opacity-50'}`}><Printer size={24} className={systemState === 'result' ? 'text-emerald-400' : 'text-slate-500'} /><span className={`mt-2 text-sm font-medium ${systemState === 'result' ? 'text-emerald-300' : 'text-slate-500'}`}>Print Label</span></button>
-//           </div>
-//         </section>
-
-//         <section className="lg:col-span-4 flex flex-col gap-6">
-//            <div className={`p-6 rounded-2xl border-2 flex flex-col items-center text-center justify-center shadow-lg transition-colors duration-500 min-h-[220px] ${!currentResult ? 'bg-slate-800 border-slate-700' : currentResult.color === 'green' ? 'bg-green-900/20 border-green-500' : 'bg-red-900/20 border-red-500'}`}>
-//                 {!currentResult ? (<div className="flex flex-col items-center gap-2 text-slate-500"><Activity size={32} /><span>Waiting for Sensor...</span></div>) : (
-//                      <><h2 className="text-slate-400 text-xs uppercase tracking-widest mb-1">AI Classification</h2><div className={`text-4xl font-black mb-1 ${currentResult.color === 'green' ? 'text-green-400' : 'text-red-500'}`}>{currentResult.color === 'green' ? 'PASS' : 'FAIL'}</div><div className="bg-slate-900/50 px-3 py-1 rounded text-xs text-blue-200 border border-slate-700 mb-2">{currentResult.details}</div><div className="w-full mt-2 mb-4"><div className="flex justify-between text-[10px] text-slate-400 mb-1"><span>Confidence</span><span>{currentResult.confidence}%</span></div><div className="w-full bg-slate-700 h-2 rounded-full overflow-hidden"><div className={`h-full ${currentResult.confidence > 90 ? 'bg-green-500' : 'bg-yellow-500'}`} style={{ width: `${currentResult.confidence}%` }}></div></div></div>
-//                      <div className="w-full pt-4 border-t border-slate-600/50"><p className="text-[10px] uppercase text-slate-500 mb-2 font-bold">Operator Verification</p>{!verificationStatus ? (<div className="flex justify-center gap-3"><button onClick={() => handleVerification(true)} className="flex items-center gap-1 px-3 py-1.5 bg-slate-700 hover:bg-green-600 text-slate-200 hover:text-white rounded-lg text-xs font-bold transition-colors"><ThumbsUp size={14} /> Correct</button><button onClick={() => handleVerification(false)} className="flex items-center gap-1 px-3 py-1.5 bg-slate-700 hover:bg-orange-600 text-slate-200 hover:text-white rounded-lg text-xs font-bold transition-colors"><ThumbsDown size={14} /> Incorrect</button></div>) : (<div className={`text-xs font-bold flex items-center justify-center gap-2 ${verificationStatus === 'correct' ? 'text-green-400' : 'text-orange-400'}`}>{verificationStatus === 'correct' ? <CheckCircle size={14}/> : <AlertTriangle size={14}/>}{verificationStatus === 'correct' ? 'Verified by Operator' : 'Feedback Recorded'}</div>)}</div></>)}
-//            </div>
-//            <div className="grid grid-cols-2 gap-4"><div className="bg-slate-800 p-4 rounded-xl border border-slate-700"><div className="text-slate-400 text-[10px] uppercase font-bold mb-1">Total Scanned</div><div className="text-3xl font-mono text-white">{stats.total}</div></div><div className="bg-slate-800 p-4 rounded-xl border border-slate-700"><div className="text-slate-400 text-[10px] uppercase font-bold mb-1">Defect Rate</div><div className="text-3xl font-mono text-red-400">{stats.total > 0 ? ((stats.defective / stats.total) * 100).toFixed(0) : 0}<span className="text-sm">%</span></div></div></div>
-//            <div className="flex-1 bg-slate-800 rounded-xl border border-slate-700 flex flex-col overflow-hidden shadow-2xl">
-//               <div className="p-3 bg-slate-900 border-b border-slate-700 flex items-center justify-between"><div className="flex items-center gap-2"><Database size={16} className="text-blue-400" /><span className="text-sm font-bold text-slate-200">Database Logs</span></div><button onClick={handleExportCSV} className="flex items-center gap-1 text-[10px] bg-slate-800 hover:bg-blue-900 text-blue-300 hover:text-blue-100 px-2 py-1 rounded border border-slate-700 transition-colors"><FileText size={12} />Export CSV</button></div>
-//               <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">{logs.length === 0 ? (<div className="h-full flex flex-col items-center justify-center text-slate-600 opacity-50"><Server size={32} className="mb-2" /><p className="text-xs">Database Empty</p></div>) : (logs.map((log, i) => (<div key={i} className="flex items-center justify-between p-3 bg-slate-900/50 rounded-lg border border-slate-700/50 hover:border-slate-500 transition-colors"><div className="flex items-center gap-3"><div className={`w-2 h-8 rounded-full ${log.color === 'green' ? 'bg-green-500' : 'bg-red-500'}`}></div><div><div className="text-xs font-bold text-white">{log.id}</div><div className="text-[10px] text-slate-400 flex items-center gap-1"><span>{log.details.split('_').slice(0, 2).join('_')}...</span><span className="text-slate-600">•</span><span>{log.confidence}%</span></div></div></div><div className={`text-[10px] font-bold px-2 py-1 rounded ${log.color === 'green' ? 'bg-green-900 text-green-400' : 'bg-red-900 text-red-400'}`}>{log.color === 'green' ? 'PASS' : 'FAIL'}</div></div>)))}</div>
-//            </div>
-//         </section>
-//       </main>
-//       {notification && (<div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-800 text-blue-100 px-6 py-3 rounded-full shadow-2xl border border-slate-600 flex items-center gap-3 z-50 animate-bounce"><Wifi size={16} className="text-green-400" /><span className="text-xs font-bold tracking-wide">{notification}</span></div>)}
-//       <style>{`@keyframes scan {0% { top: 0%; } 100% { top: 100%; }} .custom-scrollbar::-webkit-scrollbar { width: 4px; } .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }`}</style>
-//     </div>
-//   );
-// };
-// export default DefectoMCUDashboardV7;
-
-
-
-
-// import React, { useState, useRef } from 'react';
-// import { Camera, Printer, RotateCcw, Activity, Server, AlertTriangle, CheckCircle, Database, Cpu, Power, Scan, Wifi, Eye, FileText, ThumbsUp, ThumbsDown } from 'lucide-react';
-
-// const DefectoMCUDashboardV7 = () => {
-//   // --- States ---
-//   const [systemState, setSystemState] = useState('idle');
-//   const [selectedImage, setSelectedImage] = useState(null);
-//   const [currentResult, setCurrentResult] = useState(null);
-//   const [logs, setLogs] = useState([]);
-//   const [stats, setStats] = useState({ total: 0, passed: 0, defective: 0 });
-//   const [notification, setNotification] = useState(null);
-//   const [verificationStatus, setVerificationStatus] = useState(null);
-//   const fileInputRef = useRef(null);
-
-//   // --- Handlers ---
-//   const handleSensorTrigger = (event) => {
-//     const file = event.target.files[0];
-//     if (file) {
-//       const imageUrl = URL.createObjectURL(file);
-//       setSelectedImage(imageUrl);
-//       setVerificationStatus(null);
-//       startAnalysis(imageUrl, file);
-//     }
-//   };
-
-//   const startAnalysis = async (imageUrl, file) => {
-//     setSystemState('capturing');
-//     showNotification("Sensor Detected Object. Capturing Image...");
-
-//     setTimeout(async () => {
-//         setSystemState('analyzing');
-//         showNotification("Sending to Neural Engine (best.pt)...");
-
-//         const formData = new FormData();
-//         formData.append('file', file);
-
-//         try {
-//             const response = await fetch('http://127.0.0.1:8000/predict', {
-//                 method: 'POST',
-//                 body: formData,
-//             });
-
-//             if (!response.ok) throw new Error("Backend connection failed");
-
-//             const resultData = await response.json();
-//             resultData.imageUrl = imageUrl; 
-//             processResult(resultData);
-
-//         } catch (error) {
-//             console.error(error);
-//             showNotification("Backend Error: Check Console");
-//         }
-//     }, 1500);
-//   };
-
-//   const processResult = (resultData) => {
-//     setCurrentResult(resultData);
-//     setSystemState('result');
-    
-//     const isGood = resultData.color === 'green';
-    
-//     setStats(prev => ({
-//       total: prev.total + 1,
-//       passed: isGood ? prev.passed + 1 : prev.passed,
-//       defective: !isGood ? prev.defective + 1 : prev.defective
-//     }));
-    
-//     setLogs(prev => [resultData, ...prev].slice(0, 10));
-//     showNotification(`Analysis Complete: Found ${resultData.all_detections?.length || 0} objects`);
-//   };
-
-//   // --- Utility Functions ---
-//   const handleDownloadLabel = () => {
-//     if (!currentResult) return;
-//     const canvas = document.createElement('canvas');
-//     canvas.width = 400; canvas.height = 250; // Increased height for list
-//     const ctx = canvas.getContext('2d');
-    
-//     ctx.fillStyle = '#fff'; ctx.fillRect(0,0,400,250);
-//     ctx.strokeStyle = '#000'; ctx.lineWidth = 4; ctx.strokeRect(5,5,390,240);
-    
-//     ctx.fillStyle = '#000'; ctx.font = 'bold 18px Arial';
-//     ctx.fillText('DefectoMCU Inspection System', 20, 35);
-//     ctx.font = '14px monospace'; ctx.fillStyle = '#333';
-//     ctx.fillText(`ID: ${currentResult.id}`, 20, 65);
-//     ctx.font = '12px Arial'; ctx.fillText(`Time: ${currentResult.timestamp}`, 260, 65);
-    
-//     ctx.font = 'bold 32px Arial'; 
-//     ctx.fillStyle = currentResult.color === 'green' ? '#166534' : '#dc2626'; 
-//     ctx.fillText(`${currentResult.color === 'green' ? 'PASS' : 'FAIL'}`, 20, 110);
-    
-//     // List all detected defects on Label
-//     ctx.font = 'bold 14px Arial'; ctx.fillStyle = '#000';
-//     ctx.fillText(`Detected Items:`, 20, 140); 
-    
-//     ctx.font = '12px Courier New'; 
-//     ctx.fillStyle = '#000';
-    
-//     const detections = currentResult.all_detections || [];
-//     let yPos = 160;
-    
-//     if (detections.length === 0) {
-//         ctx.fillText("No Objects Detected", 20, yPos);
-//     } else {
-//         detections.slice(0, 4).forEach((det) => { // Show max 4 items on label
-//             const text = `${det.class} (${det.confidence}%)`;
-//             ctx.fillStyle = det.color === 'red' ? '#dc2626' : '#166534';
-//             ctx.fillText(text, 20, yPos);
-//             yPos += 15;
-//         });
-//         if (detections.length > 4) {
-//              ctx.fillStyle = '#000';
-//              ctx.fillText(`...and ${detections.length - 4} more`, 20, yPos);
-//         }
-//     }
-
-//     // Barcode
-//     ctx.fillStyle = '#000'; 
-//     for(let i=20; i<370; i+=6) if(Math.random() > 0.1) ctx.fillRect(i, 220, 3, 20);
-    
-//     const link = document.createElement('a');
-//     link.download = `${currentResult.id}_label.png`;
-//     link.href = canvas.toDataURL();
-//     link.click();
-//   };
-
-//   const handleExportCSV = () => {
-//     if (logs.length === 0) { showNotification("No data to export."); return; }
-//     const headers = ["ID", "Time", "Status", "Primary_Class", "Total_Objects", "Confidence"];
-//     const csvContent = [
-//         headers.join(","),
-//         ...logs.map(log => `${log.id},${log.timestamp},${log.status},${log.details},${log.all_detections?.length},${log.confidence}%`)
-//     ].join("\n");
-
-//     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-//     const link = document.createElement("a");
-//     link.href = URL.createObjectURL(blob);
-//     link.download = `logs.csv`;
-//     link.click();
-//   };
-
-//   const handleReset = () => {
-//     setSystemState('idle'); setSelectedImage(null); setCurrentResult(null); setVerificationStatus(null);
-//     if (fileInputRef.current) fileInputRef.current.value = '';
-//     showNotification("System Reset. Sensor Active.");
-//   };
-
-//   const handleVerification = (isCorrect) => {
-//       setVerificationStatus(isCorrect ? 'correct' : 'incorrect');
-//       showNotification(isCorrect ? "Verified: Correct" : "Flagged: Model Error");
-//   }
-
-//   const showNotification = (msg) => {
-//     setNotification(msg);
-//     setTimeout(() => setNotification(null), 3000);
-//   };
-
-//   return (
-//     <div className="min-h-screen bg-slate-900 text-slate-100 font-sans p-4 md:p-6 overflow-hidden flex flex-col">
-//       <header className="flex justify-between items-center mb-6 bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg">
-//         <div className="flex items-center gap-3">
-//           <div className="bg-blue-600 p-2 rounded-lg shadow-blue-500/20 shadow-lg"><Cpu size={24} className="text-white" /></div>
-//           <div><h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">DefectoMCU Monitor </h1><p className="text-xs text-slate-400 flex items-center gap-1"><Wifi size={10} className="text-green-400" /> Connected to Neural Engine</p></div>
-//         </div>
-//         <div className="flex items-center gap-6"><div className="text-right"><div className="text-[10px] uppercase text-slate-500 font-bold tracking-wider">System Status</div><div className="flex items-center justify-end gap-2"><span className={`w-2 h-2 rounded-full ${systemState === 'idle' ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`}></span><span className="font-mono text-sm font-bold text-blue-200">{systemState === 'idle' ? 'SENSOR ONLINE' : systemState === 'capturing' ? 'CAPTURING...' : systemState === 'analyzing' ? 'PROCESSING...' : 'RESULT READY'}</span></div></div><div className="h-8 w-[1px] bg-slate-700"></div><Power size={20} className="text-slate-500 hover:text-white cursor-pointer transition-colors" /></div>
-//       </header>
-
-//       <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6">
-//         <section className="lg:col-span-8 flex flex-col gap-6">
-//           <div className="bg-black rounded-2xl overflow-hidden border-4 border-slate-700 shadow-2xl relative aspect-video flex items-center justify-center group">
-//             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-800 to-black z-0">
-//                {systemState === 'idle' && (<div className="w-full h-full flex flex-col items-center justify-center opacity-30"><Eye size={64} className="text-green-500/50 animate-pulse mb-4" /><div className="text-green-500/50 font-mono text-sm tracking-[0.2em] animate-pulse">SENSOR SEARCHING...</div></div>)}
-//             </div>
-//             {selectedImage && (<img src={selectedImage} alt="Captured PCB" className={`w-full h-full object-contain z-10 transition-opacity duration-500 ${systemState === 'capturing' ? 'opacity-50 blur-sm' : 'opacity-100'}`} />)}
-            
-//             {/* --- MULTIPLE BOUNDING BOX RENDERING --- */}
-//             {systemState === 'result' && currentResult && currentResult.all_detections && (
-//                <div className="absolute inset-0 z-20">
-//                    {currentResult.all_detections.map((det, index) => (
-//                       <div key={index} 
-//                            className={`absolute border-2 ${det.color === 'green' ? 'border-green-500 shadow-[0_0_10px_green]' : 'border-red-500 shadow-[0_0_10px_red]'} transition-all duration-500`}
-//                            style={{
-//                             top: det.box.top,
-//                             left: det.box.left,
-//                             width: det.box.width,
-//                             height: det.box.height
-//                            }}>
-//                          <span className={`absolute -top-6 left-0 ${det.color === 'green' ? 'bg-green-600' : 'bg-red-600'} text-white text-[10px] font-bold px-1.5 py-0.5 shadow-md whitespace-nowrap`}>
-//                              {det.class} {det.confidence}%
-//                          </span>
-//                       </div>
-//                    ))}
-                   
-//                    {/* Footer Summary */}
-//                    <div className={`absolute bottom-4 left-4 right-4 p-3 rounded-lg flex items-center justify-between backdrop-blur-md border ${currentResult.color === 'green' ? 'bg-green-900/60 border-green-500' : 'bg-red-900/60 border-red-500'}`}>
-//                        <div className="flex items-center gap-3">{currentResult.color === 'green' ? <CheckCircle className="text-green-400" /> : <AlertTriangle className="text-red-400" />}<div><div className={`font-bold text-lg ${currentResult.color === 'green' ? 'text-green-300' : 'text-red-300'}`}>{currentResult.status}</div><div className="text-xs text-slate-300 font-mono flex items-center gap-2"><span>Detected: {currentResult.all_detections.length} Items</span></div></div></div>
-//                    </div>
-//                </div>
-//             )}
-            
-//             <div className="absolute top-4 left-4 bg-red-600/80 px-2 py-1 rounded text-[10px] font-bold tracking-widest flex items-center gap-1 z-40"><div className="w-2 h-2 bg-white rounded-full animate-pulse"></div> LIVE</div>
-//           </div>
-
-//           <div className="grid grid-cols-3 gap-4">
-//              <div className="relative group"><input type="file" ref={fileInputRef} onChange={handleSensorTrigger} accept="image/*" className="hidden" id="sensor-trigger" disabled={systemState !== 'idle'} /><label htmlFor="sensor-trigger" className={`h-full flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all cursor-pointer ${systemState === 'idle' ? 'bg-blue-600 border-blue-500 hover:bg-blue-500 shadow-lg hover:shadow-blue-500/25' : 'bg-slate-800 border-slate-700 opacity-50 cursor-not-allowed'}`}><Scan size={24} className="text-white mb-2" /><span className="font-bold text-white text-sm">Trigger Sensor</span><span className="text-[10px] text-blue-200">(Upload Image)</span></label></div>
-//              <button onClick={handleReset} className="bg-slate-800 border border-slate-700 hover:border-red-500 hover:bg-red-500/10 rounded-xl p-4 flex flex-col items-center justify-center transition-colors group"><RotateCcw size={24} className="text-slate-400 group-hover:text-red-400 transition-transform group-hover:-rotate-180" /><span className="mt-2 text-sm font-medium text-slate-300 group-hover:text-red-300">Reset System</span></button>
-//              <button onClick={handleDownloadLabel} disabled={systemState !== 'result'} className={`rounded-xl p-4 flex flex-col items-center justify-center border-2 transition-all ${systemState === 'result' ? 'bg-emerald-900/30 border-emerald-500 cursor-pointer hover:bg-emerald-900/50' : 'bg-slate-800 border-slate-700 opacity-50'}`}><Printer size={24} className={systemState === 'result' ? 'text-emerald-400' : 'text-slate-500'} /><span className={`mt-2 text-sm font-medium ${systemState === 'result' ? 'text-emerald-300' : 'text-slate-500'}`}>Print Label</span></button>
-//           </div>
-//         </section>
-
-//         <section className="lg:col-span-4 flex flex-col gap-6">
-//            <div className={`p-6 rounded-2xl border-2 flex flex-col items-center text-center justify-center shadow-lg transition-colors duration-500 min-h-[220px] ${!currentResult ? 'bg-slate-800 border-slate-700' : currentResult.color === 'green' ? 'bg-green-900/20 border-green-500' : 'bg-red-900/20 border-red-500'}`}>
-//                 {!currentResult ? (<div className="flex flex-col items-center gap-2 text-slate-500"><Activity size={32} /><span>Waiting for Sensor...</span></div>) : (
-//                      <><h2 className="text-slate-400 text-xs uppercase tracking-widest mb-1">AI Classification</h2><div className={`text-4xl font-black mb-1 ${currentResult.color === 'green' ? 'text-green-400' : 'text-red-500'}`}>{currentResult.color === 'green' ? 'PASS' : 'FAIL'}</div>
-//                      <div className="bg-slate-900/50 px-3 py-1 rounded text-xs text-blue-200 border border-slate-700 mb-2">Primary: {currentResult.details}</div>
-//                      <div className="w-full mt-2 mb-4 text-left px-4">
-//                         <p className="text-[10px] text-slate-400 mb-1">Detected Objects:</p>
-//                         <div className="max-h-24 overflow-y-auto custom-scrollbar">
-//                            {currentResult.all_detections.map((d,i) => (
-//                                <div key={i} className="flex justify-between text-xs mb-1 border-b border-slate-700/50 pb-1">
-//                                    <span className={d.color==='red'?'text-red-400':'text-green-400'}>{d.class}</span>
-//                                    <span className="text-slate-500">{d.confidence}%</span>
-//                                </div>
-//                            ))}
-//                         </div>
-//                      </div>
-//                      <div className="w-full pt-4 border-t border-slate-600/50"><p className="text-[10px] uppercase text-slate-500 mb-2 font-bold">Operator Verification</p>{!verificationStatus ? (<div className="flex justify-center gap-3"><button onClick={() => handleVerification(true)} className="flex items-center gap-1 px-3 py-1.5 bg-slate-700 hover:bg-green-600 text-slate-200 hover:text-white rounded-lg text-xs font-bold transition-colors"><ThumbsUp size={14} /> Correct</button><button onClick={() => handleVerification(false)} className="flex items-center gap-1 px-3 py-1.5 bg-slate-700 hover:bg-orange-600 text-slate-200 hover:text-white rounded-lg text-xs font-bold transition-colors"><ThumbsDown size={14} /> Incorrect</button></div>) : (<div className={`text-xs font-bold flex items-center justify-center gap-2 ${verificationStatus === 'correct' ? 'text-green-400' : 'text-orange-400'}`}>{verificationStatus === 'correct' ? <CheckCircle size={14}/> : <AlertTriangle size={14}/>}{verificationStatus === 'correct' ? 'Verified by Operator' : 'Feedback Recorded'}</div>)}</div></>)}
-//            </div>
-//            <div className="grid grid-cols-2 gap-4"><div className="bg-slate-800 p-4 rounded-xl border border-slate-700"><div className="text-slate-400 text-[10px] uppercase font-bold mb-1">Total Scanned</div><div className="text-3xl font-mono text-white">{stats.total}</div></div><div className="bg-slate-800 p-4 rounded-xl border border-slate-700"><div className="text-slate-400 text-[10px] uppercase font-bold mb-1">Defect Rate</div><div className="text-3xl font-mono text-red-400">{stats.total > 0 ? ((stats.defective / stats.total) * 100).toFixed(0) : 0}<span className="text-sm">%</span></div></div></div>
-//            <div className="flex-1 bg-slate-800 rounded-xl border border-slate-700 flex flex-col overflow-hidden shadow-2xl">
-//               <div className="p-3 bg-slate-900 border-b border-slate-700 flex items-center justify-between"><div className="flex items-center gap-2"><Database size={16} className="text-blue-400" /><span className="text-sm font-bold text-slate-200">Database Logs</span></div><button onClick={handleExportCSV} className="flex items-center gap-1 text-[10px] bg-slate-800 hover:bg-blue-900 text-blue-300 hover:text-blue-100 px-2 py-1 rounded border border-slate-700 transition-colors"><FileText size={12} />Export CSV</button></div>
-//               <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">{logs.length === 0 ? (<div className="h-full flex flex-col items-center justify-center text-slate-600 opacity-50"><Server size={32} className="mb-2" /><p className="text-xs">Database Empty</p></div>) : (logs.map((log, i) => (<div key={i} className="flex items-center justify-between p-3 bg-slate-900/50 rounded-lg border border-slate-700/50 hover:border-slate-500 transition-colors"><div className="flex items-center gap-3"><div className={`w-2 h-8 rounded-full ${log.color === 'green' ? 'bg-green-500' : 'bg-red-500'}`}></div><div><div className="text-xs font-bold text-white">{log.id}</div><div className="text-[10px] text-slate-400 flex items-center gap-1"><span>{log.all_detections ? log.all_detections.length : 0} items</span><span className="text-slate-600">•</span><span>{log.confidence}%</span></div></div></div><div className={`text-[10px] font-bold px-2 py-1 rounded ${log.color === 'green' ? 'bg-green-900 text-green-400' : 'bg-red-900 text-red-400'}`}>{log.color === 'green' ? 'PASS' : 'FAIL'}</div></div>)))}</div>
-//            </div>
-//         </section>
-//       </main>
-//       {notification && (<div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-800 text-blue-100 px-6 py-3 rounded-full shadow-2xl border border-slate-600 flex items-center gap-3 z-50 animate-bounce"><Wifi size={16} className="text-green-400" /><span className="text-xs font-bold tracking-wide">{notification}</span></div>)}
-//       <style>{`@keyframes scan {0% { top: 0%; } 100% { top: 100%; }} .custom-scrollbar::-webkit-scrollbar { width: 4px; } .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }`}</style>
-//     </div>
-//   );
-// };
-// export default DefectoMCUDashboardV7;
-
-
-// import React, { useState, useRef } from 'react';
-// import { Camera, Printer, RotateCcw, Activity, Server, AlertTriangle, CheckCircle, Database, Cpu, Power, Scan, Wifi, Eye, FileText, ThumbsUp, ThumbsDown, Sun, Moon } from 'lucide-react';
-
-// const DefectoMCUDashboardLight = () => {
-//   // --- States ---
-//   const [systemState, setSystemState] = useState('idle');
-//   const [selectedImage, setSelectedImage] = useState(null);
-//   const [currentResult, setCurrentResult] = useState(null);
-//   const [logs, setLogs] = useState([]);
-//   const [stats, setStats] = useState({ total: 0, passed: 0, defective: 0 });
-//   const [notification, setNotification] = useState(null);
-//   const [verificationStatus, setVerificationStatus] = useState(null);
-//   const fileInputRef = useRef(null);
-
-//   // --- Handlers ---
-//   const handleSensorTrigger = (event) => {
-//     const file = event.target.files[0];
-//     if (file) {
-//       const imageUrl = URL.createObjectURL(file);
-//       setSelectedImage(imageUrl);
-//       setVerificationStatus(null);
-//       startAnalysis(imageUrl, file);
-//     }
-//   };
-
-//   const startAnalysis = async (imageUrl, file) => {
-//     setSystemState('capturing');
-//     showNotification("Sensor Detected Object. Capturing Image...");
-
-//     setTimeout(async () => {
-//         setSystemState('analyzing');
-//         showNotification("Sending to Neural Engine (best.pt)...");
-
-//         const formData = new FormData();
-//         formData.append('file', file);
-
-//         try {
-//             // HOSTING NOTE: Upload korar por nicher Link ta change korte hobe
-//             const response = await fetch('http://127.0.0.1:8000/predict', {
-//                 method: 'POST',
-//                 body: formData,
-//             });
-
-//             if (!response.ok) throw new Error("Backend connection failed");
-
-//             const resultData = await response.json();
-//             resultData.imageUrl = imageUrl; 
-//             processResult(resultData);
-
-//         } catch (error) {
-//             console.error(error);
-//             showNotification("Backend Error: Check Console");
-//         }
-//     }, 1500);
-//   };
-
-//   const processResult = (resultData) => {
-//     setCurrentResult(resultData);
-//     setSystemState('result');
-    
-//     const isGood = resultData.color === 'green';
-    
-//     setStats(prev => ({
-//       total: prev.total + 1,
-//       passed: isGood ? prev.passed + 1 : prev.passed,
-//       defective: !isGood ? prev.defective + 1 : prev.defective
-//     }));
-    
-//     setLogs(prev => [resultData, ...prev].slice(0, 10));
-//     showNotification(`Analysis Complete: Found ${resultData.all_detections?.length || 0} objects`);
-//   };
-
-//   // --- Label Generator ---
-//   const handleDownloadLabel = () => {
-//     if (!currentResult) return;
-//     const canvas = document.createElement('canvas');
-//     canvas.width = 400; canvas.height = 250;
-//     const ctx = canvas.getContext('2d');
-    
-//     ctx.fillStyle = '#fff'; ctx.fillRect(0,0,400,250);
-//     ctx.strokeStyle = '#000'; ctx.lineWidth = 4; ctx.strokeRect(5,5,390,240);
-    
-//     ctx.fillStyle = '#000'; ctx.font = 'bold 18px Arial';
-//     ctx.fillText('DefectoMCU Inspection System', 20, 35);
-//     ctx.font = '14px monospace'; ctx.fillStyle = '#333';
-//     ctx.fillText(`ID: ${currentResult.id}`, 20, 65);
-//     ctx.font = '12px Arial'; ctx.fillText(`Time: ${currentResult.timestamp}`, 260, 65);
-    
-//     ctx.font = 'bold 32px Arial'; 
-//     ctx.fillStyle = currentResult.color === 'green' ? '#166534' : '#dc2626'; 
-//     ctx.fillText(`${currentResult.color === 'green' ? 'PASS' : 'FAIL'}`, 20, 110);
-    
-//     ctx.font = 'bold 14px Arial'; ctx.fillStyle = '#000';
-//     ctx.fillText(`Detected Items:`, 20, 140); 
-    
-//     ctx.font = '12px Courier New'; ctx.fillStyle = '#000';
-//     const detections = currentResult.all_detections || [];
-//     let yPos = 160;
-    
-//     if (detections.length === 0) {
-//         ctx.fillText("No Objects Detected", 20, yPos);
-//     } else {
-//         detections.slice(0, 4).forEach((det) => {
-//             const text = `${det.class} (${det.confidence}%)`;
-//             ctx.fillStyle = det.color === 'red' ? '#dc2626' : '#166534';
-//             ctx.fillText(text, 20, yPos);
-//             yPos += 15;
-//         });
-//         if (detections.length > 4) {
-//              ctx.fillStyle = '#000';
-//              ctx.fillText(`...and ${detections.length - 4} more`, 20, yPos);
-//         }
-//     }
-    
-//     const link = document.createElement('a');
-//     link.download = `${currentResult.id}_label.png`;
-//     link.href = canvas.toDataURL();
-//     link.click();
-//   };
-
-//   const handleExportCSV = () => {
-//     if (logs.length === 0) { showNotification("No data to export."); return; }
-//     const headers = ["ID", "Time", "Status", "Primary_Class", "Total_Objects", "Confidence"];
-//     const csvContent = [
-//         headers.join(","),
-//         ...logs.map(log => `${log.id},${log.timestamp},${log.status},${log.details},${log.all_detections?.length},${log.confidence}%`)
-//     ].join("\n");
-
-//     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-//     const link = document.createElement("a");
-//     link.href = URL.createObjectURL(blob);
-//     link.download = `logs.csv`;
-//     link.click();
-//   };
-
-//   const handleReset = () => {
-//     setSystemState('idle'); setSelectedImage(null); setCurrentResult(null); setVerificationStatus(null);
-//     if (fileInputRef.current) fileInputRef.current.value = '';
-//     showNotification("System Reset. Sensor Active.");
-//   };
-
-//   const handleVerification = (isCorrect) => {
-//       setVerificationStatus(isCorrect ? 'correct' : 'incorrect');
-//       showNotification(isCorrect ? "Verified: Correct" : "Flagged: Model Error");
-//   }
-
-//   const showNotification = (msg) => {
-//     setNotification(msg);
-//     setTimeout(() => setNotification(null), 3000);
-//   };
-
-//   // --- THEME COLORS (Main BG: #EBF4DD, Buttons & Logs: #ABE7B2) ---
-//   return (
-//     <div className="min-h-screen bg-[#EBF4DD] text-slate-800 font-sans p-4 md:p-6 overflow-hidden flex flex-col transition-colors duration-500">
-      
-//       {/* Header */}
-//       <header className="flex justify-between items-center mb-6 bg-white p-4 rounded-xl border border-[#ABE7B2]/50 shadow-sm">
-//         <div className="flex items-center gap-3">
-//           {/* Custom Color Background */}
-//           <div className="p-2 rounded-lg shadow-md shadow-[#ABE7B2]/40 bg-[#ABE7B2]">
-//             <Cpu size={24} className="text-slate-800" />
-//           </div>
-//           <div>
-//             <h1 className="text-xl font-bold text-slate-800 tracking-tight">DefectoMCU Monitor</h1>
-//             <p className="text-xs text-slate-500 flex items-center gap-1 font-medium">
-//               <Wifi size={10} className="text-[#7A9B45]" /> Connected to Neural Engine
-//             </p>
-//           </div>
-//         </div>
-//         <div className="flex items-center gap-6">
-//            <div className="text-right">
-//               <div className="text-[10px] uppercase text-slate-500 font-bold tracking-wider">System Status</div>
-//               <div className="flex items-center justify-end gap-2">
-//                  <span className={`w-2 h-2 rounded-full ${systemState === 'idle' ? 'bg-[#ABE7B2] animate-pulse' : 'bg-amber-400'}`}></span>
-//                  <span className="font-mono text-sm font-bold text-slate-700">
-//                     {systemState === 'idle' ? 'SENSOR ONLINE' : systemState === 'capturing' ? 'CAPTURING...' : systemState === 'analyzing' ? 'PROCESSING...' : 'RESULT READY'}
-//                  </span>
-//               </div>
-//            </div>
-//            <div className="h-8 w-[1px] bg-gray-200"></div>
-//            <button title="System Power" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-//               <Power size={20} className="text-slate-400 hover:text-red-500" />
-//            </button>
-//         </div>
-//       </header>
-
-//       {/* Main Grid */}
-//       <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-//         {/* LEFT: Vision & Controls */}
-//         <section className="lg:col-span-8 flex flex-col gap-6">
-          
-//           {/* Monitor Screen */}
-//           <div className="bg-black rounded-2xl overflow-hidden border-4 border-[#ABE7B2]/50 shadow-2xl relative aspect-video flex items-center justify-center group">
-//             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 to-black z-0">
-//                {systemState === 'idle' && (
-//                   <div className="w-full h-full flex flex-col items-center justify-center opacity-60">
-//                      <Eye size={64} className="text-[#ABE7B2] animate-pulse mb-4" />
-//                      <div className="text-[#ABE7B2] font-mono text-sm tracking-[0.2em] animate-pulse">SENSOR STANDBY...</div>
-//                   </div>
-//                )}
-//             </div>
-            
-//             {selectedImage && (<img src={selectedImage} alt="Captured PCB" className={`w-full h-full object-contain z-10 transition-opacity duration-500 ${systemState === 'capturing' ? 'opacity-50 blur-sm' : 'opacity-100'}`} />)}
-            
-//             {/* Animations */}
-//             {systemState === 'capturing' && (<div className="absolute inset-0 bg-white/20 z-20 flex items-center justify-center"><div className="absolute inset-0 border-[20px] border-white/30 animate-pulse"></div><Camera size={48} className="text-white animate-bounce" /></div>)}
-//             {systemState === 'analyzing' && (<div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/50 backdrop-blur-[2px]"><div className="relative w-64 h-64 border-2 border-[#ABE7B2]/50 rounded-lg overflow-hidden"><div className="absolute top-0 left-0 w-full h-1 bg-[#ABE7B2] shadow-[0_0_15px_#ABE7B2] animate-[scan_1.5s_linear_infinite]"></div></div><div className="mt-4 flex items-center gap-2 text-[#ABE7B2] font-mono"><Activity size={16} className="animate-spin" /><span>Running AI Inference...</span></div></div>)}
-            
-//             {/* Results Overlay */}
-//             {systemState === 'result' && currentResult && currentResult.all_detections && (
-//                <div className="absolute inset-0 z-20">
-//                    {currentResult.all_detections.map((det, index) => (
-//                       <div key={index} 
-//                            className={`absolute border-2 ${det.color === 'green' ? 'border-green-500 shadow-[0_0_15px_green]' : 'border-red-500 shadow-[0_0_15px_red]'} transition-all duration-500`}
-//                            style={{top: det.box.top, left: det.box.left, width: det.box.width, height: det.box.height}}>
-//                          <span className={`absolute -top-6 left-0 ${det.color === 'green' ? 'bg-green-600' : 'bg-red-600'} text-white text-[10px] font-bold px-1.5 py-0.5 shadow-md whitespace-nowrap rounded-sm`}>
-//                              {det.class} {det.confidence}%
-//                          </span>
-//                       </div>
-//                    ))}
-//                    <div className={`absolute bottom-4 left-4 right-4 p-3 rounded-lg flex items-center justify-between backdrop-blur-md border ${currentResult.color === 'green' ? 'bg-green-900/80 border-green-500' : 'bg-red-900/80 border-red-500'}`}>
-//                        <div className="flex items-center gap-3">{currentResult.color === 'green' ? <CheckCircle className="text-green-400" /> : <AlertTriangle className="text-red-400" />}<div><div className={`font-bold text-lg ${currentResult.color === 'green' ? 'text-green-300' : 'text-red-300'}`}>{currentResult.status}</div></div></div>
-//                    </div>
-//                </div>
-//             )}
-//             <div className="absolute top-4 left-4 bg-red-600 px-2 py-1 rounded text-[10px] font-bold tracking-widest flex items-center gap-1 z-40 text-white shadow-lg"><div className="w-2 h-2 bg-white rounded-full animate-pulse"></div> LIVE</div>
-//           </div>
-
-//           {/* Controls */}
-//           <div className="grid grid-cols-3 gap-4">
-//              <div className="relative group">
-//                 <input type="file" ref={fileInputRef} onChange={handleSensorTrigger} accept="image/*" className="hidden" id="sensor-trigger" disabled={systemState !== 'idle'} />
-//                 {/* Custom Color Button */}
-//                 <label htmlFor="sensor-trigger" className={`h-full flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed transition-all cursor-pointer shadow-sm ${systemState === 'idle' ? 'bg-[#ABE7B2]/20 border-[#ABE7B2] hover:bg-[#ABE7B2]/30 hover:border-[#98D799]' : 'bg-[#EBF4DD]/50 border-gray-300 opacity-50 cursor-not-allowed'}`}>
-//                     <Scan size={24} className="text-[#7A9B45] mb-2" />
-//                     <span className="font-bold text-slate-700 text-sm">Upload Image</span>
-//                     <span className="text-[10px] text-slate-500">(Trigger Sensor)</span>
-//                 </label>
-//              </div>
-//              <button onClick={handleReset} className="bg-white border border-gray-200 hover:border-red-300 hover:bg-red-50 rounded-xl p-4 flex flex-col items-center justify-center transition-all group shadow-sm">
-//                  <RotateCcw size={24} className="text-slate-400 group-hover:text-red-500 transition-transform group-hover:-rotate-180" />
-//                  <span className="mt-2 text-sm font-medium text-slate-600 group-hover:text-red-600">Reset System</span>
-//              </button>
-//              <button onClick={handleDownloadLabel} disabled={systemState !== 'result'} className={`rounded-xl p-4 flex flex-col items-center justify-center border transition-all shadow-sm ${systemState === 'result' ? 'bg-emerald-50 border-emerald-200 cursor-pointer hover:bg-emerald-100 hover:border-emerald-300' : 'bg-[#EBF4DD]/50 border-gray-300 opacity-50'}`}>
-//                  <Printer size={24} className={systemState === 'result' ? 'text-emerald-600' : 'text-slate-400'} />
-//                  <span className={`mt-2 text-sm font-medium ${systemState === 'result' ? 'text-emerald-700' : 'text-slate-400'}`}>Print Label</span>
-//              </button>
-//           </div>
-//         </section>
-
-//         {/* RIGHT: Stats & Logs */}
-//         <section className="lg:col-span-4 flex flex-col gap-6">
-           
-//            {/* Status Card */}
-//            <div className={`p-6 rounded-2xl border flex flex-col items-center text-center justify-center shadow-md transition-all duration-500 min-h-[220px] bg-white ${!currentResult ? 'border-gray-200' : currentResult.color === 'green' ? 'border-green-400 bg-green-50' : 'border-red-400 bg-red-50'}`}>
-//                 {!currentResult ? (
-//                      <div className="flex flex-col items-center gap-2 text-slate-400">
-//                          <Activity size={32} />
-//                          <span>Ready for Inspection...</span>
-//                      </div>
-//                 ) : (
-//                      <>
-//                         <h2 className="text-slate-500 text-xs uppercase tracking-widest mb-1 font-bold">Inspection Result</h2>
-//                         <div className={`text-4xl font-black mb-1 ${currentResult.color === 'green' ? 'text-green-600' : 'text-red-600'}`}>{currentResult.color === 'green' ? 'PASS' : 'FAIL'}</div>
-//                         <div className="bg-white/60 px-3 py-1 rounded text-xs text-slate-600 border border-black/5 mb-3 font-medium shadow-sm">Primary: {currentResult.details}</div>
-                        
-//                         <div className="w-full text-left px-2 bg-white/50 rounded-lg py-2 border border-black/5 mb-3">
-//                            <p className="text-[10px] text-slate-500 mb-1 font-bold uppercase">Defects Found ({currentResult.all_detections.length})</p>
-//                            <div className="max-h-20 overflow-y-auto custom-scrollbar pr-1">
-//                                {currentResult.all_detections.map((d,i) => (
-//                                    <div key={i} className="flex justify-between text-xs mb-1 border-b border-black/5 pb-1 last:border-0">
-//                                        <span className={d.color==='red'?'text-red-600 font-medium':'text-green-600 font-medium'}>{d.class}</span>
-//                                        <span className="text-slate-500">{d.confidence}%</span>
-//                                    </div>
-//                                ))}
-//                            </div>
-//                         </div>
-
-//                         {/* Human Verification */}
-//                         <div className="w-full pt-3 border-t border-black/10">
-//                             {!verificationStatus ? (
-//                                 <div className="flex justify-center gap-2">
-//                                     <button onClick={() => handleVerification(true)} className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 hover:border-green-500 hover:text-green-600 text-slate-600 rounded-lg text-xs font-bold transition-all shadow-sm">
-//                                         <ThumbsUp size={14} /> Correct
-//                                     </button>
-//                                     <button onClick={() => handleVerification(false)} className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 hover:border-orange-500 hover:text-orange-600 text-slate-600 rounded-lg text-xs font-bold transition-all shadow-sm">
-//                                         <ThumbsDown size={14} /> Incorrect
-//                                     </button>
-//                                 </div>
-//                             ) : (
-//                                 <div className={`text-xs font-bold flex items-center justify-center gap-2 ${verificationStatus === 'correct' ? 'text-green-600' : 'text-orange-600'}`}>
-//                                     {verificationStatus === 'correct' ? <CheckCircle size={14}/> : <AlertTriangle size={14}/>} Recorded
-//                                 </div>
-//                             )}
-//                         </div>
-//                      </>
-//                 )}
-//            </div>
-
-//            {/* Stats Cards */}
-//            <div className="grid grid-cols-2 gap-4">
-//               <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-//                   <div className="text-slate-400 text-[10px] uppercase font-bold mb-1">Total Scanned</div>
-//                   <div className="text-3xl font-mono text-slate-800">{stats.total}</div>
-//               </div>
-//               <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-//                   <div className="text-slate-400 text-[10px] uppercase font-bold mb-1">Defect Rate</div>
-//                   <div className="text-3xl font-mono text-red-500">{stats.total > 0 ? ((stats.defective / stats.total) * 100).toFixed(0) : 0}<span className="text-sm">%</span></div>
-//               </div>
-//            </div>
-
-//            {/* Logs - Light Table */}
-//            <div className="flex-1 bg-white rounded-xl border border-gray-200 flex flex-col overflow-hidden shadow-sm">
-//               <div className="p-3 bg-[#ABE7B2] border-b border-gray-200 flex items-center justify-between">
-//                   <div className="flex items-center gap-2">
-//                       <Database size={16} className="text-slate-800" />
-//                       <span className="text-sm font-bold text-slate-800">Database Logs</span>
-//                   </div>
-//                   {/* Custom Color Button Hover */}
-//                   <button onClick={handleExportCSV} className="flex items-center gap-1 text-[10px] bg-white hover:bg-white/80 text-slate-700 border border-gray-200 px-2 py-1 rounded transition-colors shadow-sm">
-//                       <FileText size={12} /> CSV
-//                   </button>
-//               </div>
-//               <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">
-//                   {logs.length === 0 ? (
-//                       <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60">
-//                           <Server size={32} className="mb-2" />
-//                           <p className="text-xs">Database Empty</p>
-//                       </div>
-//                   ) : (
-//                       logs.map((log, i) => (
-//                           <div key={i} className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-100 hover:border-[#ABE7B2] hover:shadow-md transition-all group">
-//                               <div className="flex items-center gap-3">
-//                                   <div className={`w-1.5 h-8 rounded-full ${log.color === 'green' ? 'bg-green-500' : 'bg-red-500'}`}></div>
-//                                   <div>
-//                                       <div className="text-xs font-bold text-slate-800">{log.id}</div>
-//                                       <div className="text-[10px] text-slate-500 flex items-center gap-1">
-//                                           <span>{log.all_detections ? log.all_detections.length : 0} items</span>
-//                                           <span className="text-slate-300">•</span>
-//                                           <span>{log.confidence}%</span>
-//                                       </div>
-//                                   </div>
-//                               </div>
-//                               <div className={`text-[10px] font-bold px-2 py-1 rounded ${log.color === 'green' ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-red-50 text-red-600 border border-red-100'}`}>
-//                                   {log.color === 'green' ? 'PASS' : 'FAIL'}
-//                               </div>
-//                           </div>
-//                       ))
-//                   )}
-//               </div>
-//            </div>
-//         </section>
-//       </main>
-
-//       {/* Notification Toast */}
-//       {notification && (
-//         <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 z-50 animate-bounce">
-//             <Wifi size={16} className="text-[#ABE7B2]" />
-//             <span className="text-xs font-bold tracking-wide">{notification}</span>
-//         </div>
-//       )}
-
-//       <style>{`
-//         @keyframes scan { 0% { top: 0%; } 100% { top: 100%; } }
-//         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-//         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-//       `}</style>
-//     </div>
-//   );
-// };
-
-// export default DefectoMCUDashboardLight;
-
-// import React, { useState, useRef } from 'react';
-// import { Camera, Printer, RotateCcw, Activity, Server, AlertTriangle, CheckCircle, Database, Cpu, Power, Scan, Wifi, Eye, FileText, ThumbsUp, ThumbsDown, Sun, Moon, CheckCheck, XCircle } from 'lucide-react';
-
-// const DefectoMCUDashboardLight = () => {
-//   // --- States ---
-//   const [systemState, setSystemState] = useState('idle');
-//   const [selectedImage, setSelectedImage] = useState(null);
-//   const [currentResult, setCurrentResult] = useState(null);
-//   const [logs, setLogs] = useState([]);
-//   const [stats, setStats] = useState({ total: 0, passed: 0, defective: 0 });
-//   const [notification, setNotification] = useState(null);
-//   const [verificationStatus, setVerificationStatus] = useState(null);
-//   const fileInputRef = useRef(null);
-
-//   // --- Handlers ---
-//   const handleSensorTrigger = (event) => {
-//     const file = event.target.files[0];
-//     if (file) {
-//       const imageUrl = URL.createObjectURL(file);
-//       setSelectedImage(imageUrl);
-//       setVerificationStatus(null);
-//       startAnalysis(imageUrl, file);
-//     }
-//   };
-
-//   const startAnalysis = async (imageUrl, file) => {
-//     setSystemState('capturing');
-//     showNotification("Sensor Detected Object. Capturing Image...");
-
-//     setTimeout(async () => {
-//         setSystemState('analyzing');
-//         showNotification("Sending to Neural Engine (best.pt)...");
-
-//         const formData = new FormData();
-//         formData.append('file', file);
-
-//         try {
-//             // HOSTING NOTE: Upload korar por nicher Link ta change korte hobe
-//             const response = await fetch('http://127.0.0.1:8000/predict', {
-//                 method: 'POST',
-//                 body: formData,
-//             });
-
-//             if (!response.ok) throw new Error("Backend connection failed");
-
-//             const resultData = await response.json();
-//             resultData.imageUrl = imageUrl; 
-//             processResult(resultData);
-
-//         } catch (error) {
-//             console.error(error);
-//             showNotification("Backend Error: Check Console");
-//         }
-//     }, 1500);
-//   };
-
-//   const processResult = (resultData) => {
-//     setCurrentResult(resultData);
-//     setSystemState('result');
-    
-//     const isGood = resultData.color === 'green';
-    
-//     setStats(prev => ({
-//       total: prev.total + 1,
-//       passed: isGood ? prev.passed + 1 : prev.passed,
-//       defective: !isGood ? prev.defective + 1 : prev.defective
-//     }));
-    
-//     // Add new log
-//     setLogs(prev => [resultData, ...prev].slice(0, 10));
-//     showNotification(`Analysis Complete: Found ${resultData.all_detections?.length || 0} objects`);
-//   };
-
-//   // --- Label Generator ---
-//   const handleDownloadLabel = () => {
-//     if (!currentResult) return;
-//     const canvas = document.createElement('canvas');
-//     canvas.width = 400; canvas.height = 250;
-//     const ctx = canvas.getContext('2d');
-    
-//     ctx.fillStyle = '#fff'; ctx.fillRect(0,0,400,250);
-//     ctx.strokeStyle = '#000'; ctx.lineWidth = 4; ctx.strokeRect(5,5,390,240);
-    
-//     ctx.fillStyle = '#000'; ctx.font = 'bold 18px Arial';
-//     ctx.fillText('DefectoMCU Inspection System', 20, 35);
-//     ctx.font = '14px monospace'; ctx.fillStyle = '#333';
-//     ctx.fillText(`ID: ${currentResult.id}`, 20, 65);
-//     ctx.font = '12px Arial'; ctx.fillText(`Time: ${currentResult.timestamp}`, 260, 65);
-    
-//     ctx.font = 'bold 32px Arial'; 
-//     ctx.fillStyle = currentResult.color === 'green' ? '#166534' : '#dc2626'; 
-//     ctx.fillText(`${currentResult.color === 'green' ? 'PASS' : 'FAIL'}`, 20, 110);
-    
-//     ctx.font = 'bold 14px Arial'; ctx.fillStyle = '#000';
-//     ctx.fillText(`Detected Items:`, 20, 140); 
-    
-//     ctx.font = '12px Courier New'; ctx.fillStyle = '#000';
-//     const detections = currentResult.all_detections || [];
-//     let yPos = 160;
-    
-//     if (detections.length === 0) {
-//         ctx.fillText("No Objects Detected", 20, yPos);
-//     } else {
-//         detections.slice(0, 4).forEach((det) => {
-//             const text = `${det.class} (${det.confidence}%)`;
-//             ctx.fillStyle = det.color === 'red' ? '#dc2626' : '#166534';
-//             ctx.fillText(text, 20, yPos);
-//             yPos += 15;
-//         });
-//         if (detections.length > 4) {
-//              ctx.fillStyle = '#000';
-//              ctx.fillText(`...and ${detections.length - 4} more`, 20, yPos);
-//         }
-//     }
-    
-//     const link = document.createElement('a');
-//     link.download = `${currentResult.id}_label.png`;
-//     link.href = canvas.toDataURL();
-//     link.click();
-//   };
-
-//   const handleExportCSV = () => {
-//     if (logs.length === 0) { showNotification("No data to export."); return; }
-//     const headers = ["ID", "Time", "Status", "Primary_Class", "Verification", "Total_Objects", "Confidence"];
-//     const csvContent = [
-//         headers.join(","),
-//         ...logs.map(log => `${log.id},${log.timestamp},${log.status},${log.details},${log.verification || 'Pending'},${log.all_detections?.length},${log.confidence}%`)
-//     ].join("\n");
-
-//     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-//     const link = document.createElement("a");
-//     link.href = URL.createObjectURL(blob);
-//     link.download = `logs.csv`;
-//     link.click();
-//   };
-
-//   const handleReset = () => {
-//     setSystemState('idle'); setSelectedImage(null); setCurrentResult(null); setVerificationStatus(null);
-//     if (fileInputRef.current) fileInputRef.current.value = '';
-//     showNotification("System Reset. Sensor Active.");
-//   };
-
-//   // --- UPDATED LOGIC: Update Logs on Verification ---
-//   const handleVerification = (isCorrect) => {
-//       const status = isCorrect ? 'Correct' : 'Incorrect';
-//       setVerificationStatus(isCorrect ? 'correct' : 'incorrect');
-      
-//       // Update the specific log entry in the database (state)
-//       if (currentResult) {
-//           setLogs(prevLogs => prevLogs.map(log => 
-//               log.id === currentResult.id 
-//                   ? { ...log, verification: status } 
-//                   : log
-//           ));
-//       }
-      
-//       showNotification(isCorrect ? "Verified: Correct - Log Updated" : "Flagged: Model Error - Log Updated");
-//   }
-
-//   const showNotification = (msg) => {
-//     setNotification(msg);
-//     setTimeout(() => setNotification(null), 3000);
-//   };
-
-//   // --- THEME COLORS (Main BG: #B8DB80) ---
-//   return (
-//     <div className="min-h-screen bg-[#B8DB80] text-slate-800 font-sans p-4 md:p-6 overflow-hidden flex flex-col transition-colors duration-500">
-      
-//       {/* Header */}
-//       <header className="flex justify-between items-center mb-6 bg-white p-4 rounded-xl border border-white/50 shadow-sm">
-//         <div className="flex items-center gap-3">
-//           {/* Logo Box */}
-//           <div className="p-2 rounded-lg shadow-md bg-[#7A9B45]">
-//             <Cpu size={24} className="text-white" />
-//           </div>
-//           <div>
-//             <h1 className="text-xl font-bold text-slate-800 tracking-tight">DefectoMCU Monitor</h1>
-//             <p className="text-xs text-slate-500 flex items-center gap-1 font-medium">
-//               <Wifi size={10} className="text-[#556B2F]" /> Connected to Neural Engine
-//             </p>
-//           </div>
-//         </div>
-//         <div className="flex items-center gap-6">
-//            <div className="text-right">
-//               <div className="text-[10px] uppercase text-slate-500 font-bold tracking-wider">System Status</div>
-//               <div className="flex items-center justify-end gap-2">
-//                  <span className={`w-2 h-2 rounded-full ${systemState === 'idle' ? 'bg-[#7A9B45] animate-pulse' : 'bg-amber-400'}`}></span>
-//                  <span className="font-mono text-sm font-bold text-slate-700">
-//                     {systemState === 'idle' ? 'SENSOR ONLINE' : systemState === 'capturing' ? 'CAPTURING...' : systemState === 'analyzing' ? 'PROCESSING...' : 'RESULT READY'}
-//                  </span>
-//               </div>
-//            </div>
-//            <div className="h-8 w-[1px] bg-gray-200"></div>
-//            <button title="System Power" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-//               <Power size={20} className="text-slate-400 hover:text-red-500" />
-//            </button>
-//         </div>
-//       </header>
-
-//       {/* Main Grid */}
-//       <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-//         {/* LEFT: Vision & Controls */}
-//         <section className="lg:col-span-8 flex flex-col gap-6">
-          
-//           {/* Monitor Screen - Remains Dark */}
-//           <div className="bg-black rounded-2xl overflow-hidden border-4 border-[#7A9B45]/50 shadow-2xl relative aspect-video flex items-center justify-center group">
-//             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 to-black z-0">
-//                {systemState === 'idle' && (
-//                   <div className="w-full h-full flex flex-col items-center justify-center opacity-60">
-//                      <Eye size={64} className="text-[#B8DB80] animate-pulse mb-4" />
-//                      <div className="text-[#B8DB80] font-mono text-sm tracking-[0.2em] animate-pulse">SENSOR STANDBY...</div>
-//                   </div>
-//                )}
-//             </div>
-            
-//             {selectedImage && (<img src={selectedImage} alt="Captured PCB" className={`w-full h-full object-contain z-10 transition-opacity duration-500 ${systemState === 'capturing' ? 'opacity-50 blur-sm' : 'opacity-100'}`} />)}
-            
-//             {/* Animations */}
-//             {systemState === 'capturing' && (<div className="absolute inset-0 bg-white/20 z-20 flex items-center justify-center"><div className="absolute inset-0 border-[20px] border-white/30 animate-pulse"></div><Camera size={48} className="text-white animate-bounce" /></div>)}
-//             {systemState === 'analyzing' && (<div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/50 backdrop-blur-[2px]"><div className="relative w-64 h-64 border-2 border-[#B8DB80]/50 rounded-lg overflow-hidden"><div className="absolute top-0 left-0 w-full h-1 bg-[#B8DB80] shadow-[0_0_15px_#B8DB80] animate-[scan_1.5s_linear_infinite]"></div></div><div className="mt-4 flex items-center gap-2 text-[#B8DB80] font-mono"><Activity size={16} className="animate-spin" /><span>Running AI Inference...</span></div></div>)}
-            
-//             {/* Results Overlay */}
-//             {systemState === 'result' && currentResult && currentResult.all_detections && (
-//                <div className="absolute inset-0 z-20">
-//                    {currentResult.all_detections.map((det, index) => (
-//                       <div key={index} 
-//                            className={`absolute border-2 ${det.color === 'green' ? 'border-green-500 shadow-[0_0_15px_green]' : 'border-red-500 shadow-[0_0_15px_red]'} transition-all duration-500`}
-//                            style={{top: det.box.top, left: det.box.left, width: det.box.width, height: det.box.height}}>
-//                          <span className={`absolute -top-6 left-0 ${det.color === 'green' ? 'bg-green-600' : 'bg-red-600'} text-white text-[10px] font-bold px-1.5 py-0.5 shadow-md whitespace-nowrap rounded-sm`}>
-//                              {det.class} {det.confidence}%
-//                          </span>
-//                       </div>
-//                    ))}
-//                    <div className={`absolute bottom-4 left-4 right-4 p-3 rounded-lg flex items-center justify-between backdrop-blur-md border ${currentResult.color === 'green' ? 'bg-green-900/80 border-green-500' : 'bg-red-900/80 border-red-500'}`}>
-//                        <div className="flex items-center gap-3">{currentResult.color === 'green' ? <CheckCircle className="text-green-400" /> : <AlertTriangle className="text-red-400" />}<div><div className={`font-bold text-lg ${currentResult.color === 'green' ? 'text-green-300' : 'text-red-300'}`}>{currentResult.status}</div></div></div>
-//                    </div>
-//                </div>
-//             )}
-//             <div className="absolute top-4 left-4 bg-red-600 px-2 py-1 rounded text-[10px] font-bold tracking-widest flex items-center gap-1 z-40 text-white shadow-lg"><div className="w-2 h-2 bg-white rounded-full animate-pulse"></div> LIVE</div>
-//           </div>
-
-//           {/* Controls */}
-//           <div className="grid grid-cols-3 gap-4">
-//              <div className="relative group">
-//                 <input type="file" ref={fileInputRef} onChange={handleSensorTrigger} accept="image/*" className="hidden" id="sensor-trigger" disabled={systemState !== 'idle'} />
-                
-//                 {/* Upload Button */}
-//                 <label htmlFor="sensor-trigger" className={`h-full flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed transition-all cursor-pointer shadow-sm ${systemState === 'idle' ? 'bg-white/80 border-white hover:border-[#556B2F] hover:bg-white' : 'bg-gray-100 border-gray-200 opacity-50 cursor-not-allowed'}`}>
-//                     <Scan size={24} className="text-[#556B2F] mb-2" />
-//                     <span className="font-bold text-slate-700 text-sm">Upload Image</span>
-//                     <span className="text-[10px] text-slate-500">(Trigger Sensor)</span>
-//                 </label>
-//              </div>
-             
-//              {/* Reset Button (Custom Base Color) */}
-//              <button onClick={handleReset} className="bg-slate-200 border border-slate-300 hover:border-red-400 hover:bg-red-100 rounded-xl p-4 flex flex-col items-center justify-center transition-all group shadow-sm">
-//                  <RotateCcw size={24} className="text-slate-500 group-hover:text-red-600 transition-transform group-hover:-rotate-180" />
-//                  <span className="mt-2 text-sm font-medium text-slate-600 group-hover:text-red-700">Reset System</span>
-//              </button>
-             
-//              <button onClick={handleDownloadLabel} disabled={systemState !== 'result'} className={`rounded-xl p-4 flex flex-col items-center justify-center border transition-all shadow-sm ${systemState === 'result' ? 'bg-emerald-50 border-emerald-200 cursor-pointer hover:bg-emerald-100 hover:border-emerald-300' : 'bg-gray-100 border-gray-200 opacity-50'}`}>
-//                  <Printer size={24} className={systemState === 'result' ? 'text-emerald-600' : 'text-slate-400'} />
-//                  <span className={`mt-2 text-sm font-medium ${systemState === 'result' ? 'text-emerald-700' : 'text-slate-400'}`}>Print Label</span>
-//              </button>
-//           </div>
-//         </section>
-
-//         {/* RIGHT: Stats & Logs */}
-//         <section className="lg:col-span-4 flex flex-col gap-6">
-           
-//            {/* Status Card */}
-//            <div className={`p-6 rounded-2xl border flex flex-col items-center text-center justify-center shadow-md transition-all duration-500 min-h-[220px] bg-white ${!currentResult ? 'border-gray-200' : currentResult.color === 'green' ? 'border-green-400 bg-green-50' : 'border-red-400 bg-red-50'}`}>
-//                 {!currentResult ? (
-//                      <div className="flex flex-col items-center gap-2 text-slate-400">
-//                          <Activity size={32} />
-//                          <span>Ready for Inspection...</span>
-//                      </div>
-//                 ) : (
-//                      <>
-//                         <h2 className="text-slate-500 text-xs uppercase tracking-widest mb-1 font-bold">Inspection Result</h2>
-//                         <div className={`text-4xl font-black mb-1 ${currentResult.color === 'green' ? 'text-green-600' : 'text-red-600'}`}>{currentResult.color === 'green' ? 'PASS' : 'FAIL'}</div>
-//                         <div className="bg-white/60 px-3 py-1 rounded text-xs text-slate-600 border border-black/5 mb-3 font-medium shadow-sm">Primary: {currentResult.details}</div>
-                        
-//                         <div className="w-full text-left px-2 bg-white/50 rounded-lg py-2 border border-black/5 mb-3">
-//                            <p className="text-[10px] text-slate-500 mb-1 font-bold uppercase">Defects Found ({currentResult.all_detections.length})</p>
-//                            <div className="max-h-20 overflow-y-auto custom-scrollbar pr-1">
-//                                {currentResult.all_detections.map((d,i) => (
-//                                    <div key={i} className="flex justify-between text-xs mb-1 border-b border-black/5 pb-1 last:border-0">
-//                                        <span className={d.color==='red'?'text-red-600 font-medium':'text-green-600 font-medium'}>{d.class}</span>
-//                                        <span className="text-slate-500">{d.confidence}%</span>
-//                                    </div>
-//                                ))}
-//                            </div>
-//                         </div>
-
-//                         {/* Human Verification */}
-//                         <div className="w-full pt-3 border-t border-black/10">
-//                             {!verificationStatus ? (
-//                                 <div className="flex justify-center gap-2">
-//                                     <button onClick={() => handleVerification(true)} className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 hover:border-green-500 hover:text-green-600 text-slate-600 rounded-lg text-xs font-bold transition-all shadow-sm">
-//                                         <ThumbsUp size={14} /> Correct
-//                                     </button>
-//                                     <button onClick={() => handleVerification(false)} className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 hover:border-orange-500 hover:text-orange-600 text-slate-600 rounded-lg text-xs font-bold transition-all shadow-sm">
-//                                         <ThumbsDown size={14} /> Incorrect
-//                                     </button>
-//                                 </div>
-//                             ) : (
-//                                 <div className={`text-xs font-bold flex items-center justify-center gap-2 ${verificationStatus === 'correct' ? 'text-green-600' : 'text-orange-600'}`}>
-//                                     {verificationStatus === 'correct' ? <CheckCircle size={14}/> : <AlertTriangle size={14}/>} Recorded
-//                                 </div>
-//                             )}
-//                         </div>
-//                      </>
-//                 )}
-//            </div>
-
-//            {/* Stats Cards */}
-//            <div className="grid grid-cols-2 gap-4">
-//               <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-//                   <div className="text-slate-400 text-[10px] uppercase font-bold mb-1">Total Scanned</div>
-//                   <div className="text-3xl font-mono text-slate-800">{stats.total}</div>
-//               </div>
-//               <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-//                   <div className="text-slate-400 text-[10px] uppercase font-bold mb-1">Defect Rate</div>
-//                   <div className="text-3xl font-mono text-red-500">{stats.total > 0 ? ((stats.defective / stats.total) * 100).toFixed(0) : 0}<span className="text-sm">%</span></div>
-//               </div>
-//            </div>
-
-//            {/* Logs - Updated Header Color & Logic */}
-//            <div className="flex-1 bg-white rounded-xl border border-gray-200 flex flex-col overflow-hidden shadow-sm">
-//               <div className="p-3 bg-[#ABE7B2] border-b border-gray-200 flex items-center justify-between">
-//                   <div className="flex items-center gap-2">
-//                       <Database size={16} className="text-slate-800" />
-//                       <span className="text-sm font-bold text-slate-800">Database Logs</span>
-//                   </div>
-//                   <button onClick={handleExportCSV} className="flex items-center gap-1 text-[10px] bg-white hover:bg-white/80 text-slate-700 border border-gray-200 px-2 py-1 rounded transition-colors shadow-sm">
-//                       <FileText size={12} /> CSV
-//                   </button>
-//               </div>
-//               <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">
-//                   {logs.length === 0 ? (
-//                       <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60">
-//                           <Server size={32} className="mb-2" />
-//                           <p className="text-xs">Database Empty</p>
-//                       </div>
-//                   ) : (
-//                       logs.map((log, i) => (
-//                           <div key={i} className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-100 hover:border-[#ABE7B2] hover:shadow-md transition-all group">
-//                               <div className="flex items-center gap-3">
-//                                   <div className={`w-1.5 h-8 rounded-full ${log.color === 'green' ? 'bg-green-500' : 'bg-red-500'}`}></div>
-//                                   <div>
-//                                       <div className="text-xs font-bold text-slate-800">{log.id}</div>
-//                                       <div className="text-[10px] text-slate-500 flex items-center gap-1">
-//                                           {/* Show Verification Status in Log */}
-//                                           {log.verification && (
-//                                               <span className={`flex items-center gap-0.5 ${log.verification === 'Correct' ? 'text-green-600' : 'text-orange-500'}`}>
-//                                                   {log.verification === 'Correct' ? <CheckCheck size={10}/> : <AlertTriangle size={10}/>}
-//                                               </span>
-//                                           )}
-//                                           <span>{log.all_detections ? log.all_detections.length : 0} items</span>
-//                                       </div>
-//                                   </div>
-//                               </div>
-//                               <div className={`text-[10px] font-bold px-2 py-1 rounded ${log.color === 'green' ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-red-50 text-red-600 border border-red-100'}`}>
-//                                   {log.color === 'green' ? 'PASS' : 'FAIL'}
-//                               </div>
-//                           </div>
-//                       ))
-//                   )}
-//               </div>
-//            </div>
-//         </section>
-//       </main>
-
-//       {/* Notification Toast */}
-//       {notification && (
-//         <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 z-50 animate-bounce">
-//             <Wifi size={16} className="text-[#ABE7B2]" />
-//             <span className="text-xs font-bold tracking-wide">{notification}</span>
-//         </div>
-//       )}
-
-//       <style>{`
-//         @keyframes scan { 0% { top: 0%; } 100% { top: 100%; } }
-//         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-//         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-//       `}</style>
-//     </div>
-//   );
-// };
-
-// export default DefectoMCUDashboardLight;
-
-// last one
-// import React, { useState, useRef } from 'react';
-// import { Camera, Printer, RotateCcw, Activity, Server, AlertTriangle, CheckCircle, Database, Cpu, Power, Scan, Wifi, Eye, FileText, ThumbsUp, ThumbsDown, Sun, Moon, CheckCheck, XCircle } from 'lucide-react';
-
-// const DefectoMCUDashboardLight = () => {
-//   // --- States ---
-//   const [systemState, setSystemState] = useState('idle');
-//   const [selectedImage, setSelectedImage] = useState(null);
-//   const [currentResult, setCurrentResult] = useState(null);
-//   const [logs, setLogs] = useState([]);
-//   const [stats, setStats] = useState({ total: 0, passed: 0, defective: 0 });
-//   const [notification, setNotification] = useState(null);
-//   const [verificationStatus, setVerificationStatus] = useState(null);
-//   const fileInputRef = useRef(null);
-
-//   // --- Handlers ---
-//   const handleSensorTrigger = (event) => {
-//     const file = event.target.files[0];
-//     if (file) {
-//       const imageUrl = URL.createObjectURL(file);
-//       setSelectedImage(imageUrl);
-//       setVerificationStatus(null);
-//       startAnalysis(imageUrl, file);
-//     }
-//   };
-
-//   const startAnalysis = async (imageUrl, file) => {
-//     setSystemState('capturing');
-//     showNotification("Sensor Detected Object. Capturing Image...");
-
-//     setTimeout(async () => {
-//         setSystemState('analyzing');
-//         showNotification("Sending to Neural Engine (best.pt)...");
-
-//         const formData = new FormData();
-//         formData.append('file', file);
-
-//         try {
-//             // HOSTING NOTE: Upload korar por nicher Link ta change korte hobe
-//             const response = await fetch('http://127.0.0.1:8000/predict', {
-//                 method: 'POST',
-//                 body: formData,
-//             });
-
-//             if (!response.ok) throw new Error("Backend connection failed");
-
-//             const resultData = await response.json();
-//             resultData.imageUrl = imageUrl; 
-//             processResult(resultData);
-
-//         } catch (error) {
-//             console.error(error);
-//             showNotification("Backend Error: Check Console");
-//         }
-//     }, 1500);
-//   };
-
-//   const processResult = (resultData) => {
-//     setCurrentResult(resultData);
-//     setSystemState('result');
-    
-//     const isGood = resultData.color === 'green';
-    
-//     setStats(prev => ({
-//       total: prev.total + 1,
-//       passed: isGood ? prev.passed + 1 : prev.passed,
-//       defective: !isGood ? prev.defective + 1 : prev.defective
-//     }));
-    
-//     // Add new log
-//     setLogs(prev => [resultData, ...prev].slice(0, 10));
-//     showNotification(`Analysis Complete: Found ${resultData.all_detections?.length || 0} objects`);
-//   };
-
-//   // --- Label Generator ---
-//   const handleDownloadLabel = () => {
-//     if (!currentResult) return;
-//     const canvas = document.createElement('canvas');
-//     canvas.width = 400; canvas.height = 250;
-//     const ctx = canvas.getContext('2d');
-    
-//     ctx.fillStyle = '#fff'; ctx.fillRect(0,0,400,250);
-//     ctx.strokeStyle = '#000'; ctx.lineWidth = 4; ctx.strokeRect(5,5,390,240);
-    
-//     ctx.fillStyle = '#000'; ctx.font = 'bold 18px Arial';
-//     ctx.fillText('DefectoMCU Inspection System', 20, 35);
-//     ctx.font = '14px monospace'; ctx.fillStyle = '#333';
-//     ctx.fillText(`ID: ${currentResult.id}`, 20, 65);
-//     ctx.font = '12px Arial'; ctx.fillText(`Time: ${currentResult.timestamp}`, 260, 65);
-    
-//     ctx.font = 'bold 32px Arial'; 
-//     ctx.fillStyle = currentResult.color === 'green' ? '#166534' : '#dc2626'; 
-//     ctx.fillText(`${currentResult.color === 'green' ? 'PASS' : 'FAIL'}`, 20, 110);
-    
-//     ctx.font = 'bold 14px Arial'; ctx.fillStyle = '#000';
-//     ctx.fillText(`Detected Items:`, 20, 140); 
-    
-//     ctx.font = '12px Courier New'; ctx.fillStyle = '#000';
-//     const detections = currentResult.all_detections || [];
-//     let yPos = 160;
-    
-//     if (detections.length === 0) {
-//         ctx.fillText("No Objects Detected", 20, yPos);
-//     } else {
-//         detections.slice(0, 4).forEach((det) => {
-//             const text = `${det.class} (${det.confidence}%)`;
-//             ctx.fillStyle = det.color === 'red' ? '#dc2626' : '#166534';
-//             ctx.fillText(text, 20, yPos);
-//             yPos += 15;
-//         });
-//         if (detections.length > 4) {
-//              ctx.fillStyle = '#000';
-//              ctx.fillText(`...and ${detections.length - 4} more`, 20, yPos);
-//         }
-//     }
-    
-//     const link = document.createElement('a');
-//     link.download = `${currentResult.id}_label.png`;
-//     link.href = canvas.toDataURL();
-//     link.click();
-//   };
-
-//   const handleExportCSV = () => {
-//     if (logs.length === 0) { showNotification("No data to export."); return; }
-//     const headers = ["ID", "Time", "Status", "Primary_Class", "Verification", "Total_Objects", "Confidence"];
-//     const csvContent = [
-//         headers.join(","),
-//         ...logs.map(log => `${log.id},${log.timestamp},${log.status},${log.details},${log.verification || 'Pending'},${log.all_detections?.length},${log.confidence}%`)
-//     ].join("\n");
-
-//     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-//     const link = document.createElement("a");
-//     link.href = URL.createObjectURL(blob);
-//     link.download = `logs.csv`;
-//     link.click();
-//   };
-
-//   const handleReset = () => {
-//     setSystemState('idle'); setSelectedImage(null); setCurrentResult(null); setVerificationStatus(null);
-//     if (fileInputRef.current) fileInputRef.current.value = '';
-//     showNotification("System Reset. Sensor Active.");
-//   };
-
-//   // --- UPDATED LOGIC: Update Logs on Verification ---
-//   const handleVerification = (isCorrect) => {
-//       const status = isCorrect ? 'Correct' : 'Incorrect';
-//       setVerificationStatus(isCorrect ? 'correct' : 'incorrect');
-      
-//       // Update the specific log entry in the database (state)
-//       if (currentResult) {
-//           setLogs(prevLogs => prevLogs.map(log => 
-//               log.id === currentResult.id 
-//                   ? { ...log, verification: status } 
-//                   : log
-//           ));
-//       }
-      
-//       showNotification(isCorrect ? "Verified: Correct - Log Updated" : "Flagged: Model Error - Log Updated");
-//   }
-
-//   const showNotification = (msg) => {
-//     setNotification(msg);
-//     setTimeout(() => setNotification(null), 3000);
-//   };
-
-//   // --- THEME COLORS (Main BG: #B8DB80) ---
-//   return (
-//     <div className="min-h-screen bg-[#B8DB80] text-slate-800 font-sans p-4 md:p-6 overflow-hidden flex flex-col transition-colors duration-500">
-      
-//       {/* Header */}
-//       <header className="flex justify-between items-center mb-6 bg-white p-4 rounded-xl border border-white/50 shadow-sm">
-//         <div className="flex items-center gap-3">
-//           {/* Logo Box */}
-//           <div className="p-2 rounded-lg shadow-md bg-[#7A9B45]">
-//             <Cpu size={24} className="text-white" />
-//           </div>
-//           <div>
-//             <h1 className="text-xl font-bold text-slate-800 tracking-tight">DefectoMCU Monitor</h1>
-//             <p className="text-xs text-slate-500 flex items-center gap-1 font-medium">
-//               <Wifi size={10} className="text-[#556B2F]" /> Connected to Neural Engine
-//             </p>
-//           </div>
-//         </div>
-//         <div className="flex items-center gap-6">
-//            <div className="text-right">
-//               <div className="text-[10px] uppercase text-slate-500 font-bold tracking-wider">System Status</div>
-//               <div className="flex items-center justify-end gap-2">
-//                  <span className={`w-2 h-2 rounded-full ${systemState === 'idle' ? 'bg-[#7A9B45] animate-pulse' : 'bg-amber-400'}`}></span>
-//                  <span className="font-mono text-sm font-bold text-slate-700">
-//                     {systemState === 'idle' ? 'SENSOR ONLINE' : systemState === 'capturing' ? 'CAPTURING...' : systemState === 'analyzing' ? 'PROCESSING...' : 'RESULT READY'}
-//                  </span>
-//               </div>
-//            </div>
-//            <div className="h-8 w-[1px] bg-gray-200"></div>
-//            <button title="System Power" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-//               <Power size={20} className="text-slate-400 hover:text-red-500" />
-//            </button>
-//         </div>
-//       </header>
-
-//       {/* Main Grid */}
-//       <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-//         {/* LEFT: Vision & Controls */}
-//         <section className="lg:col-span-8 flex flex-col gap-6">
-          
-//           {/* Monitor Screen - FIXED: Bounding Box Alignment */}
-//           <div className="bg-black rounded-2xl overflow-hidden border-4 border-[#7A9B45]/50 shadow-2xl relative aspect-video flex items-center justify-center group">
-//             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 to-black z-0">
-//                {systemState === 'idle' && (
-//                   <div className="w-full h-full flex flex-col items-center justify-center opacity-60">
-//                      <Eye size={64} className="text-[#B8DB80] animate-pulse mb-4" />
-//                      <div className="text-[#B8DB80] font-mono text-sm tracking-[0.2em] animate-pulse">SENSOR STANDBY...</div>
-//                   </div>
-//                )}
-//             </div>
-            
-//             {/* The Image Wrapper: Fits exactly to the image content */}
-//             {selectedImage ? (
-//                 <div className="relative max-w-full max-h-full z-10 flex justify-center items-center">
-//                     <img 
-//                         src={selectedImage} 
-//                         alt="Captured PCB" 
-//                         className="block max-w-full max-h-full"
-//                         style={{ maxHeight: '100%', objectFit: 'contain' }}
-//                     />
-                    
-//                     {/* Bounding Boxes are now RELATIVE to this image wrapper */}
-//                     {systemState === 'result' && currentResult && currentResult.all_detections && (
-//                         <div className="absolute inset-0">
-//                             {currentResult.all_detections.map((det, index) => (
-//                                 <div key={index} 
-//                                     className={`absolute border-2 ${det.color === 'green' ? 'border-green-500 shadow-[0_0_15px_green]' : 'border-red-500 shadow-[0_0_15px_red]'} transition-all duration-500`}
-//                                     style={{
-//                                         top: det.box.top, 
-//                                         left: det.box.left, 
-//                                         width: det.box.width, 
-//                                         height: det.box.height
-//                                     }}>
-//                                     <span className={`absolute -top-6 left-0 ${det.color === 'green' ? 'bg-green-600' : 'bg-red-600'} text-white text-[10px] font-bold px-1.5 py-0.5 shadow-md whitespace-nowrap rounded-sm`}>
-//                                         {det.class} {det.confidence}%
-//                                     </span>
-//                                 </div>
-//                             ))}
-//                         </div>
-//                     )}
-//                 </div>
-//             ) : null}
-            
-//             {/* Full Screen Animations (Overlay on top of everything) */}
-//             {systemState === 'capturing' && (<div className="absolute inset-0 bg-white/20 z-20 flex items-center justify-center"><div className="absolute inset-0 border-[20px] border-white/30 animate-pulse"></div><Camera size={48} className="text-white animate-bounce" /></div>)}
-//             {systemState === 'analyzing' && (<div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/50 backdrop-blur-[2px]"><div className="relative w-64 h-64 border-2 border-[#B8DB80]/50 rounded-lg overflow-hidden"><div className="absolute top-0 left-0 w-full h-1 bg-[#B8DB80] shadow-[0_0_15px_#B8DB80] animate-[scan_1.5s_linear_infinite]"></div></div><div className="mt-4 flex items-center gap-2 text-[#B8DB80] font-mono"><Activity size={16} className="animate-spin" /><span>Running AI Inference...</span></div></div>)}
-            
-//             {/* Monitor Footer Overlay */}
-//             {systemState === 'result' && currentResult && (
-//                 <div className="absolute bottom-4 left-4 right-4 p-3 rounded-lg flex items-center justify-between backdrop-blur-md border border-white/10 z-20 pointer-events-none">
-//                     <div className="flex items-center gap-3">
-//                         {currentResult.color === 'green' ? <CheckCircle className="text-green-400" /> : <AlertTriangle className="text-red-400" />}
-//                         <div><div className={`font-bold text-lg ${currentResult.color === 'green' ? 'text-green-300' : 'text-red-300'}`}>{currentResult.status}</div></div>
-//                     </div>
-//                 </div>
-//             )}
-
-//             <div className="absolute top-4 left-4 bg-red-600 px-2 py-1 rounded text-[10px] font-bold tracking-widest flex items-center gap-1 z-40 text-white shadow-lg"><div className="w-2 h-2 bg-white rounded-full animate-pulse"></div> LIVE</div>
-//           </div>
-
-//           {/* Controls */}
-//           <div className="grid grid-cols-3 gap-4">
-//              <div className="relative group">
-//                 <input type="file" ref={fileInputRef} onChange={handleSensorTrigger} accept="image/*" className="hidden" id="sensor-trigger" disabled={systemState !== 'idle'} />
-                
-//                 {/* Upload Button */}
-//                 <label htmlFor="sensor-trigger" className={`h-full flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed transition-all cursor-pointer shadow-sm ${systemState === 'idle' ? 'bg-white/80 border-white hover:border-[#556B2F] hover:bg-white' : 'bg-gray-100 border-gray-200 opacity-50 cursor-not-allowed'}`}>
-//                     <Scan size={24} className="text-[#556B2F] mb-2" />
-//                     <span className="font-bold text-slate-700 text-sm">Upload Image</span>
-//                     <span className="text-[10px] text-slate-500">(Trigger Sensor)</span>
-//                 </label>
-//              </div>
-             
-//              {/* Reset Button (Updated Color) */}
-//              <button onClick={handleReset} className="bg-slate-200 border border-slate-300 hover:border-red-400 hover:bg-red-100 rounded-xl p-4 flex flex-col items-center justify-center transition-all group shadow-sm">
-//                  <RotateCcw size={24} className="text-slate-500 group-hover:text-red-600 transition-transform group-hover:-rotate-180" />
-//                  <span className="mt-2 text-sm font-medium text-slate-600 group-hover:text-red-700">Reset System</span>
-//              </button>
-             
-//              <button onClick={handleDownloadLabel} disabled={systemState !== 'result'} className={`rounded-xl p-4 flex flex-col items-center justify-center border transition-all shadow-sm ${systemState === 'result' ? 'bg-emerald-50 border-emerald-200 cursor-pointer hover:bg-emerald-100 hover:border-emerald-300' : 'bg-gray-100 border-gray-200 opacity-50'}`}>
-//                  <Printer size={24} className={systemState === 'result' ? 'text-emerald-600' : 'text-slate-400'} />
-//                  <span className={`mt-2 text-sm font-medium ${systemState === 'result' ? 'text-emerald-700' : 'text-slate-400'}`}>Print Label</span>
-//              </button>
-//           </div>
-//         </section>
-
-//         {/* RIGHT: Stats & Logs */}
-//         <section className="lg:col-span-4 flex flex-col gap-6">
-           
-//            {/* Status Card */}
-//            <div className={`p-6 rounded-2xl border flex flex-col items-center text-center justify-center shadow-md transition-all duration-500 min-h-[220px] bg-white ${!currentResult ? 'border-gray-200' : currentResult.color === 'green' ? 'border-green-400 bg-green-50' : 'border-red-400 bg-red-50'}`}>
-//                 {!currentResult ? (
-//                      <div className="flex flex-col items-center gap-2 text-slate-400">
-//                          <Activity size={32} />
-//                          <span>Ready for Inspection...</span>
-//                      </div>
-//                 ) : (
-//                      <>
-//                         <h2 className="text-slate-500 text-xs uppercase tracking-widest mb-1 font-bold">Inspection Result</h2>
-//                         <div className={`text-4xl font-black mb-1 ${currentResult.color === 'green' ? 'text-green-600' : 'text-red-600'}`}>{currentResult.color === 'green' ? 'PASS' : 'FAIL'}</div>
-//                         <div className="bg-white/60 px-3 py-1 rounded text-xs text-slate-600 border border-black/5 mb-3 font-medium shadow-sm">Primary: {currentResult.details}</div>
-                        
-//                         <div className="w-full text-left px-2 bg-white/50 rounded-lg py-2 border border-black/5 mb-3">
-//                            <p className="text-[10px] text-slate-500 mb-1 font-bold uppercase">Defects Found ({currentResult.all_detections.length})</p>
-//                            <div className="max-h-20 overflow-y-auto custom-scrollbar pr-1">
-//                                {currentResult.all_detections.map((d,i) => (
-//                                    <div key={i} className="flex justify-between text-xs mb-1 border-b border-black/5 pb-1 last:border-0">
-//                                        <span className={d.color==='red'?'text-red-600 font-medium':'text-green-600 font-medium'}>{d.class}</span>
-//                                        <span className="text-slate-500">{d.confidence}%</span>
-//                                    </div>
-//                                ))}
-//                            </div>
-//                         </div>
-
-//                         {/* Human Verification */}
-//                         <div className="w-full pt-3 border-t border-black/10">
-//                             {!verificationStatus ? (
-//                                 <div className="flex justify-center gap-2">
-//                                     <button onClick={() => handleVerification(true)} className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 hover:border-green-500 hover:text-green-600 text-slate-600 rounded-lg text-xs font-bold transition-all shadow-sm">
-//                                         <ThumbsUp size={14} /> Correct
-//                                     </button>
-//                                     <button onClick={() => handleVerification(false)} className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 hover:border-orange-500 hover:text-orange-600 text-slate-600 rounded-lg text-xs font-bold transition-all shadow-sm">
-//                                         <ThumbsDown size={14} /> Incorrect
-//                                     </button>
-//                                 </div>
-//                             ) : (
-//                                 <div className={`text-xs font-bold flex items-center justify-center gap-2 ${verificationStatus === 'correct' ? 'text-green-600' : 'text-orange-600'}`}>
-//                                     {verificationStatus === 'correct' ? <CheckCircle size={14}/> : <AlertTriangle size={14}/>} Recorded
-//                                 </div>
-//                             )}
-//                         </div>
-//                      </>
-//                 )}
-//            </div>
-
-//            {/* Stats Cards */}
-//            <div className="grid grid-cols-2 gap-4">
-//               <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-//                   <div className="text-slate-400 text-[10px] uppercase font-bold mb-1">Total Scanned</div>
-//                   <div className="text-3xl font-mono text-slate-800">{stats.total}</div>
-//               </div>
-//               <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-//                   <div className="text-slate-400 text-[10px] uppercase font-bold mb-1">Defect Rate</div>
-//                   <div className="text-3xl font-mono text-red-500">{stats.total > 0 ? ((stats.defective / stats.total) * 100).toFixed(0) : 0}<span className="text-sm">%</span></div>
-//               </div>
-//            </div>
-
-//            {/* Logs - Updated Header Color & Logic */}
-//            <div className="flex-1 bg-white rounded-xl border border-gray-200 flex flex-col overflow-hidden shadow-sm">
-//               <div className="p-3 bg-[#ABE7B2] border-b border-gray-200 flex items-center justify-between">
-//                   <div className="flex items-center gap-2">
-//                       <Database size={16} className="text-slate-800" />
-//                       <span className="text-sm font-bold text-slate-800">Database Logs</span>
-//                   </div>
-//                   <button onClick={handleExportCSV} className="flex items-center gap-1 text-[10px] bg-white hover:bg-white/80 text-slate-700 border border-gray-200 px-2 py-1 rounded transition-colors shadow-sm">
-//                       <FileText size={12} /> CSV
-//                   </button>
-//               </div>
-//               <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">
-//                   {logs.length === 0 ? (
-//                       <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60">
-//                           <Server size={32} className="mb-2" />
-//                           <p className="text-xs">Database Empty</p>
-//                       </div>
-//                   ) : (
-//                       logs.map((log, i) => (
-//                           <div key={i} className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-100 hover:border-[#ABE7B2] hover:shadow-md transition-all group">
-//                               <div className="flex items-center gap-3">
-//                                   <div className={`w-1.5 h-8 rounded-full ${log.color === 'green' ? 'bg-green-500' : 'bg-red-500'}`}></div>
-//                                   <div>
-//                                       <div className="text-xs font-bold text-slate-800">{log.id}</div>
-//                                       <div className="text-[10px] text-slate-500 flex items-center gap-1">
-//                                           {/* Show Verification Status in Log */}
-//                                           {log.verification && (
-//                                               <span className={`flex items-center gap-0.5 ${log.verification === 'Correct' ? 'text-green-600' : 'text-orange-500'}`}>
-//                                                   {log.verification === 'Correct' ? <CheckCheck size={10}/> : <AlertTriangle size={10}/>}
-//                                               </span>
-//                                           )}
-//                                           <span>{log.all_detections ? log.all_detections.length : 0} items</span>
-//                                       </div>
-//                                   </div>
-//                               </div>
-//                               <div className={`text-[10px] font-bold px-2 py-1 rounded ${log.color === 'green' ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-red-50 text-red-600 border border-red-100'}`}>
-//                                   {log.color === 'green' ? 'PASS' : 'FAIL'}
-//                               </div>
-//                           </div>
-//                       ))
-//                   )}
-//               </div>
-//            </div>
-//         </section>
-//       </main>
-
-//       {/* Notification Toast */}
-//       {notification && (
-//         <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 z-50 animate-bounce">
-//             <Wifi size={16} className="text-[#ABE7B2]" />
-//             <span className="text-xs font-bold tracking-wide">{notification}</span>
-//         </div>
-//       )}
-
-//       <style>{`
-//         @keyframes scan { 0% { top: 0%; } 100% { top: 100%; } }
-//         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-//         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-//       `}</style>
-//     </div>
-//   );
-// };
-
-// export default DefectoMCUDashboardLight;
-
-
-// final one
-
-import React, { useState, useRef } from 'react';
-import { Camera, Printer, RotateCcw, Activity, Server, AlertTriangle, CheckCircle, Database, Cpu, Power, Scan, Wifi, Eye, FileText, ThumbsUp, ThumbsDown, Sun, Moon, CheckCheck, XCircle } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Activity,
+  AlertTriangle,
+  Camera,
+  CheckCheck,
+  CheckCircle,
+  Cpu,
+  Database,
+  Eye,
+  FileText,
+  Printer,
+  RotateCcw,
+  Scan,
+  Server,
+  ThumbsDown,
+  ThumbsUp,
+  Wifi,
+} from 'lucide-react';
 
 const DefectoMCUDashboardLight = () => {
-  // --- States ---
   const [systemState, setSystemState] = useState('idle');
   const [selectedImage, setSelectedImage] = useState(null);
   const [currentResult, setCurrentResult] = useState(null);
@@ -1680,406 +26,542 @@ const DefectoMCUDashboardLight = () => {
   const [stats, setStats] = useState({ total: 0, passed: 0, defective: 0 });
   const [notification, setNotification] = useState(null);
   const [verificationStatus, setVerificationStatus] = useState(null);
-  const fileInputRef = useRef(null);
 
-  // --- Handlers ---
-  const handleSensorTrigger = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      // Reset previous result states immediately for new scan
-      setVerificationStatus(null);
-      const imageUrl = URL.createObjectURL(file);
-      setSelectedImage(imageUrl);
-      startAnalysis(imageUrl, file);
-    }
+  const fileInputRef = useRef(null);
+  const boardFrameRef = useRef(null);
+  const boardImageRef = useRef(null);
+  const [boardFrame, setBoardFrame] = useState({ left: 0, top: 0, width: 0, height: 0 });
+
+  const defectRate = stats.total > 0 ? ((stats.defective / stats.total) * 100).toFixed(1) : '0.0';
+  const detections = currentResult?.all_detections || [];
+  const resultIsGood = currentResult?.color === 'green';
+
+  const updateBoardFrame = () => {
+    if (!boardFrameRef.current || !boardImageRef.current) return;
+
+    const containerRect = boardFrameRef.current.getBoundingClientRect();
+    const imageRect = boardImageRef.current.getBoundingClientRect();
+
+    setBoardFrame({
+      left: imageRect.left - containerRect.left,
+      top: imageRect.top - containerRect.top,
+      width: imageRect.width,
+      height: imageRect.height,
+    });
   };
 
-  const startAnalysis = async (imageUrl, file) => {
-    setSystemState('capturing');
-    showNotification("Sensor Triggered. Capturing Image...");
+  useEffect(() => {
+    updateBoardFrame();
 
-    setTimeout(async () => {
-        setSystemState('analyzing');
-        showNotification("Sending to Neural Engine (best.pt)...");
+    const handleResize = () => updateBoardFrame();
+    window.addEventListener('resize', handleResize);
 
-        const formData = new FormData();
-        formData.append('file', file);
+    const observer = typeof ResizeObserver !== 'undefined' && boardImageRef.current
+      ? new ResizeObserver(handleResize)
+      : null;
 
-        try {
-            // HOSTING NOTE: Upload korar por nicher Link ta change korte hobe
-            const response = await fetch('https://mrt661-defectomcu-api.hf.space/predict', {
-                method: 'POST',
-                body: formData,
-            });
+    if (observer && boardImageRef.current) {
+      observer.observe(boardImageRef.current);
+    }
 
-            if (!response.ok) throw new Error("Backend connection failed");
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (observer) observer.disconnect();
+    };
+  }, [selectedImage, currentResult]);
 
-            const resultData = await response.json();
-            resultData.imageUrl = imageUrl; 
-            processResult(resultData);
+  const parsePercentValue = (value) => {
+    if (typeof value === 'number') return value;
+    if (typeof value !== 'string') return 0;
+    return Number.parseFloat(value.replace('%', '')) || 0;
+  };
 
-        } catch (error) {
-            console.error(error);
-            showNotification("Backend Error: Check Console");
-        }
-    }, 1500);
+  const getDetectionStyle = (box) => {
+    const rawLeftPct = parsePercentValue(box.left);
+    const rawTopPct = parsePercentValue(box.top);
+    const rawWidthPct = parsePercentValue(box.width);
+    const rawHeightPct = parsePercentValue(box.height);
+
+    const leftPct = Math.min(100, Math.max(0, rawLeftPct));
+    const topPct = Math.min(100, Math.max(0, rawTopPct));
+    const widthPct = Math.min(100 - leftPct, Math.max(0, rawWidthPct));
+    const heightPct = Math.min(100 - topPct, Math.max(0, rawHeightPct));
+
+    return {
+      left: `${boardFrame.left + (leftPct / 100) * boardFrame.width}px`,
+      top: `${boardFrame.top + (topPct / 100) * boardFrame.height}px`,
+      width: `${(widthPct / 100) * boardFrame.width}px`,
+      height: `${(heightPct / 100) * boardFrame.height}px`,
+    };
+  };
+
+  const getLabelStyle = () => ({
+    bottom: '100%',
+    left: '0px',
+    transform: 'translateY(-4px)',
+    maxWidth: '200px',
+  });
+
+  const showNotification = (msg) => {
+    setNotification(msg);
+    setTimeout(() => setNotification(null), 2800);
   };
 
   const processResult = (resultData) => {
     setCurrentResult(resultData);
     setSystemState('result');
-    
+
     const isGood = resultData.color === 'green';
-    
-    setStats(prev => ({
+    setStats((prev) => ({
       total: prev.total + 1,
       passed: isGood ? prev.passed + 1 : prev.passed,
-      defective: !isGood ? prev.defective + 1 : prev.defective
+      defective: !isGood ? prev.defective + 1 : prev.defective,
     }));
-    
-    // Add new log to the top
-    setLogs(prev => [resultData, ...prev]);
-    showNotification(`Analysis Complete: Found ${resultData.all_detections?.length || 0} objects`);
+
+    setLogs((prev) => [resultData, ...prev]);
+    showNotification(`Inspection Complete: ${resultData.status} (${resultData.confidence}%)`);
   };
 
-  // --- Label Generator ---
+  const startAnalysis = async (imageUrl, file) => {
+    setSystemState('capturing');
+    showNotification('Sensor Triggered. Capturing Image...');
+
+    setTimeout(async () => {
+      setSystemState('analyzing');
+      showNotification('Sending to Neural Engine (best.pt)...');
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await fetch('https://mrt661-defectomcu-api.hf.space/predict', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) throw new Error('Backend connection failed');
+
+        const resultData = await response.json();
+        resultData.imageUrl = imageUrl;
+        processResult(resultData);
+      } catch (error) {
+        console.error(error);
+        showNotification('Backend Error: Check Console');
+      }
+    }, 1400);
+  };
+
+  const handleSensorTrigger = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setVerificationStatus(null);
+    const imageUrl = URL.createObjectURL(file);
+    setSelectedImage(imageUrl);
+    startAnalysis(imageUrl, file);
+  };
+
+  const handleReset = () => {
+    setSystemState('idle');
+    setSelectedImage(null);
+    setCurrentResult(null);
+    setVerificationStatus(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    showNotification('System Reset. Sensor Active.');
+  };
+
+  const handleVerification = (isCorrect) => {
+    const status = isCorrect ? 'Correct' : 'Incorrect';
+    setVerificationStatus(isCorrect ? 'correct' : 'incorrect');
+
+    if (currentResult) {
+      setLogs((prevLogs) =>
+        prevLogs.map((log) =>
+          log.id === currentResult.id
+            ? { ...log, verification: status }
+            : log,
+        ),
+      );
+    }
+
+    showNotification(isCorrect ? 'Verified: Correct - Log Updated' : 'Flagged: Model Error - Log Updated');
+  };
+
+  const handleExportCSV = () => {
+    if (logs.length === 0) {
+      showNotification('No data to export.');
+      return;
+    }
+
+    const headers = ['ID', 'Time', 'Status', 'Primary_Class', 'Verification', 'Total_Objects', 'Confidence'];
+    const csvContent = [
+      headers.join(','),
+      ...logs.map(
+        (log) =>
+          `${log.id},${log.timestamp},${log.status},${log.details},${log.verification || 'Pending'},${log.all_detections?.length || 0},${log.confidence}%`,
+      ),
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'logs.csv';
+    link.click();
+  };
+
   const handleDownloadLabel = () => {
     if (!currentResult) return;
+
     const canvas = document.createElement('canvas');
-    canvas.width = 400; canvas.height = 250;
+    canvas.width = 500;
+    canvas.height = 300;
     const ctx = canvas.getContext('2d');
-    
-    ctx.fillStyle = '#fff'; ctx.fillRect(0,0,400,250);
-    ctx.strokeStyle = '#000'; ctx.lineWidth = 4; ctx.strokeRect(5,5,390,240);
-    
-    ctx.fillStyle = '#000'; ctx.font = 'bold 18px Arial';
-    ctx.fillText('DefectoMCU Inspection System', 20, 35);
-    ctx.font = '14px monospace'; ctx.fillStyle = '#333';
-    ctx.fillText(`ID: ${currentResult.id}`, 20, 65);
-    ctx.font = '12px Arial'; ctx.fillText(`Time: ${currentResult.timestamp}`, 260, 65);
-    
-    ctx.font = 'bold 32px Arial'; 
-    ctx.fillStyle = currentResult.color === 'green' ? '#166534' : '#dc2626'; 
-    ctx.fillText(`${currentResult.color === 'green' ? 'PASS' : 'FAIL'}`, 20, 110);
-    
-    ctx.font = 'bold 14px Arial'; ctx.fillStyle = '#000';
-    ctx.fillText(`Detected Items:`, 20, 140); 
-    
-    ctx.font = '12px Courier New'; ctx.fillStyle = '#000';
-    const detections = currentResult.all_detections || [];
-    let yPos = 160;
-    
-    if (detections.length === 0) {
-        ctx.fillText("No Objects Detected", 20, yPos);
-    } else {
-        detections.slice(0, 4).forEach((det) => {
-            const text = `${det.class} (${det.confidence}%)`;
-            ctx.fillStyle = det.color === 'red' ? '#dc2626' : '#166534';
-            ctx.fillText(text, 20, yPos);
-            yPos += 15;
-        });
-        if (detections.length > 4) {
-             ctx.fillStyle = '#000';
-             ctx.fillText(`...and ${detections.length - 4} more`, 20, yPos);
-        }
-    }
-    
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 500, 300);
+    ctx.strokeStyle = '#2f3e46';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(8, 8, 484, 284);
+
+    ctx.fillStyle = '#1f2937';
+    ctx.font = '700 22px "IBM Plex Sans", sans-serif';
+    ctx.fillText('DefectoMCU Inspection Label', 24, 42);
+
+    ctx.font = '600 14px "IBM Plex Sans", sans-serif';
+    ctx.fillText(`ID: ${currentResult.id}`, 24, 70);
+    ctx.fillText(`Time: ${currentResult.timestamp}`, 24, 92);
+
+    ctx.font = '800 52px "IBM Plex Sans", sans-serif';
+    ctx.fillStyle = resultIsGood ? '#1b8f45' : '#d52f2f';
+    ctx.fillText(resultIsGood ? 'PASS' : 'FAIL', 24, 152);
+
+    ctx.font = '700 16px "IBM Plex Sans", sans-serif';
+    ctx.fillStyle = '#1f2937';
+    ctx.fillText(`Primary Class: ${currentResult.details}`, 24, 182);
+    ctx.fillText(`Confidence: ${currentResult.confidence}%`, 24, 206);
+
     const link = document.createElement('a');
     link.download = `${currentResult.id}_label.png`;
     link.href = canvas.toDataURL();
     link.click();
   };
 
-  const handleExportCSV = () => {
-    if (logs.length === 0) { showNotification("No data to export."); return; }
-    const headers = ["ID", "Time", "Status", "Primary_Class", "Verification", "Total_Objects", "Confidence"];
-    const csvContent = [
-        headers.join(","),
-        ...logs.map(log => `${log.id},${log.timestamp},${log.status},${log.details},${log.verification || 'Pending'},${log.all_detections?.length},${log.confidence}%`)
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `logs.csv`;
-    link.click();
-  };
-
-  const handleReset = () => {
-    setSystemState('idle'); setSelectedImage(null); setCurrentResult(null); setVerificationStatus(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-    showNotification("System Reset. Sensor Active.");
-  };
-
-  const handleVerification = (isCorrect) => {
-      const status = isCorrect ? 'Correct' : 'Incorrect';
-      setVerificationStatus(isCorrect ? 'correct' : 'incorrect');
-      
-      if (currentResult) {
-          setLogs(prevLogs => prevLogs.map(log => 
-              log.id === currentResult.id 
-                  ? { ...log, verification: status } 
-                  : log
-          ));
-      }
-      
-      showNotification(isCorrect ? "Verified: Correct - Log Updated" : "Flagged: Model Error - Log Updated");
-  }
-
-  const showNotification = (msg) => {
-    setNotification(msg);
-    setTimeout(() => setNotification(null), 3000);
-  };
-
   return (
-    <div className="min-h-screen bg-[#B8DB80] text-slate-800 font-sans p-4 md:p-6 overflow-hidden flex flex-col transition-colors duration-500">
-      
-      {/* Header */}
-      <header className="flex justify-between items-center mb-6 bg-white p-4 rounded-xl border border-white/50 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg shadow-md bg-[#7A9B45]">
-            <Cpu size={24} className="text-white" />
+    <div className="flex h-screen flex-col overflow-hidden bg-[radial-gradient(circle_at_top,_#edf4e8_0%,_#e8eef1_48%,_#dde5ea_100%)] p-4 text-slate-800 md:p-6 xl:p-8">
+      <header className="mb-4 shrink-0 rounded-3xl border border-slate-200 bg-white/95 px-5 py-4 shadow-[0_14px_35px_rgba(61,83,103,0.14)] md:mb-5 md:px-6 md:py-5">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="rounded-2xl bg-[#3f8f66] p-3 shadow-lg">
+              <Cpu size={30} className="text-white" />
+            </div>
+            <div>
+              <h1 className="text-[2rem] font-extrabold tracking-tight text-slate-800">DefectoMCU Monitor</h1>
+              <p className="mt-1 flex items-center gap-2 text-base font-semibold text-slate-600">
+                <Wifi size={16} className="text-[#3f8f66]" /> Connected to Neural Engine
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-800 tracking-tight">DefectoMCU Monitor</h1>
-            <p className="text-xs text-slate-500 flex items-center gap-1 font-medium">
-              <Wifi size={10} className="text-[#556B2F]" /> Connected to Neural Engine
+
+          <div className="rounded-2xl border border-slate-200 bg-[#f7faf5] px-5 py-3 shadow-sm">
+            <p className="text-sm font-bold uppercase tracking-[0.18em] text-slate-500">System Status</p>
+            <p className="mt-1 flex items-center gap-2 text-xl font-extrabold text-slate-700">
+              <span
+                className={`h-3 w-3 rounded-full ${
+                  systemState === 'idle' ? 'bg-green-500 animate-pulse' : systemState === 'result' ? 'bg-blue-500' : 'bg-amber-500'
+                }`}
+              ></span>
+              {systemState === 'idle'
+                ? 'SENSOR ONLINE'
+                : systemState === 'capturing'
+                  ? 'CAPTURING...'
+                  : systemState === 'analyzing'
+                    ? 'PROCESSING...'
+                    : 'RESULT READY'}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-6">
-           <div className="text-right">
-              <div className="text-[10px] uppercase text-slate-500 font-bold tracking-wider">System Status</div>
-              <div className="flex items-center justify-end gap-2">
-                 <span className={`w-2 h-2 rounded-full ${systemState === 'idle' ? 'bg-[#7A9B45] animate-pulse' : 'bg-amber-400'}`}></span>
-                 <span className="font-mono text-sm font-bold text-slate-700">
-                    {systemState === 'idle' ? 'SENSOR ONLINE' : systemState === 'capturing' ? 'CAPTURING...' : systemState === 'analyzing' ? 'PROCESSING...' : 'RESULT READY'}
-                 </span>
-              </div>
-           </div>
-           <div className="h-8 w-[1px] bg-gray-200"></div>
-           <button title="System Power" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-              <Power size={20} className="text-slate-400 hover:text-red-500" />
-           </button>
-        </div>
       </header>
 
-      {/* Main Grid */}
-      <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* LEFT: Vision & Controls */}
-        <section className="lg:col-span-8 flex flex-col gap-6">
-          
-          {/* Monitor Screen */}
-          <div className="bg-black rounded-2xl overflow-hidden border-4 border-[#7A9B45]/50 shadow-2xl relative aspect-video flex items-center justify-center group">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 to-black z-0">
-               {systemState === 'idle' && (
-                  <div className="w-full h-full flex flex-col items-center justify-center opacity-60">
-                     <Eye size={64} className="text-[#B8DB80] animate-pulse mb-4" />
-                     <div className="text-[#B8DB80] font-mono text-sm tracking-[0.2em] animate-pulse">SENSOR STANDBY...</div>
+      <main className="grid flex-1 min-h-0 grid-cols-1 gap-5 xl:grid-cols-12 2xl:gap-6">
+        <section className="flex min-h-0 flex-col xl:col-span-8">
+          <div className="flex min-h-0 flex-1 flex-col rounded-[28px] border-2 border-[#9fb9a5] bg-white p-3 shadow-[0_18px_42px_rgba(63,143,102,0.18)] md:p-4">
+            <div ref={boardFrameRef} className="relative min-h-[300px] flex-1 overflow-visible rounded-2xl border-[5px] border-[#2f6f4d] bg-slate-900 md:min-h-[360px] xl:min-h-0">
+              <div className="absolute inset-0 overflow-hidden rounded-[18px]">
+                {!selectedImage && (
+                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center text-[#d8f0dd]">
+                    <Eye size={76} className="animate-pulse" />
+                    <p className="mt-5 text-2xl font-bold tracking-[0.18em]">SENSOR STANDBY</p>
                   </div>
-               )}
-            </div>
-            
-            {/* The Image Wrapper */}
-            {selectedImage ? (
-                <div className="relative max-w-full max-h-full z-10 flex justify-center items-center">
-                    <img 
-                        src={selectedImage} 
-                        alt="Captured PCB" 
-                        className="block max-w-full max-h-full"
-                        style={{ maxHeight: '100%', objectFit: 'contain' }}
-                    />
-                    
-                    {/* Bounding Boxes */}
-                    {systemState === 'result' && currentResult && currentResult.all_detections && (
-                        <div className="absolute inset-0">
-                            {currentResult.all_detections.map((det, index) => (
-                                <div key={index} 
-                                    className={`absolute border-2 ${det.color === 'green' ? 'border-green-500 shadow-[0_0_15px_green]' : 'border-red-500 shadow-[0_0_15px_red]'} transition-all duration-500`}
-                                    style={{
-                                        top: det.box.top, 
-                                        left: det.box.left, 
-                                        width: det.box.width, 
-                                        height: det.box.height
-                                    }}>
-                                    <span className={`absolute -top-6 left-0 ${det.color === 'green' ? 'bg-green-600' : 'bg-red-600'} text-white text-[10px] font-bold px-1.5 py-0.5 shadow-md whitespace-nowrap rounded-sm`}>
-                                        {det.class} {det.confidence}%
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            ) : null}
-            
-            {/* Animations */}
-            {systemState === 'capturing' && (<div className="absolute inset-0 bg-white/20 z-20 flex items-center justify-center"><div className="absolute inset-0 border-[20px] border-white/30 animate-pulse"></div><Camera size={48} className="text-white animate-bounce" /></div>)}
-            {systemState === 'analyzing' && (<div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/50 backdrop-blur-[2px]"><div className="relative w-64 h-64 border-2 border-[#B8DB80]/50 rounded-lg overflow-hidden"><div className="absolute top-0 left-0 w-full h-1 bg-[#B8DB80] shadow-[0_0_15px_#B8DB80] animate-[scan_1.5s_linear_infinite]"></div></div><div className="mt-4 flex items-center gap-2 text-[#B8DB80] font-mono"><Activity size={16} className="animate-spin" /><span>Running AI Inference...</span></div></div>)}
-            
-            {/* Monitor Footer Overlay */}
-            {systemState === 'result' && currentResult && (
-                <div className="absolute bottom-4 left-4 right-4 p-3 rounded-lg flex items-center justify-between backdrop-blur-md border border-white/10 z-20 pointer-events-none">
-                    <div className="flex items-center gap-3">
-                        {currentResult.color === 'green' ? <CheckCircle className="text-green-400" /> : <AlertTriangle className="text-red-400" />}
-                        <div><div className={`font-bold text-lg ${currentResult.color === 'green' ? 'text-green-300' : 'text-red-300'}`}>{currentResult.status}</div></div>
-                    </div>
-                </div>
-            )}
+                )}
 
-            <div className="absolute top-4 left-4 bg-red-600 px-2 py-1 rounded text-[10px] font-bold tracking-widest flex items-center gap-1 z-40 text-white shadow-lg"><div className="w-2 h-2 bg-white rounded-full animate-pulse"></div> LIVE</div>
+                {selectedImage && (
+                  <div className="relative z-10 flex h-full w-full items-center justify-center">
+                    <img
+                      ref={boardImageRef}
+                      onLoad={updateBoardFrame}
+                      src={selectedImage}
+                      alt="Detected board"
+                      className={`h-full w-auto max-h-full max-w-full object-contain transition-opacity duration-300 ${
+                        systemState === 'capturing' ? 'opacity-45' : 'opacity-100'
+                      }`}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {systemState === 'result' && detections.length > 0 && (
+                <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden rounded-[18px]">
+                  {detections.map((det, idx) => {
+                    const boxStyle = getDetectionStyle(det.box);
+
+                    return (
+                      <div key={`${det.class}-${idx}`} className="absolute" style={boxStyle}>
+                        <div
+                          className={`absolute inset-0 rounded-sm border-[3px] ${
+                            det.color === 'green'
+                              ? 'border-green-500 bg-transparent shadow-[0_0_0_1px_rgba(16,185,129,0.35)]'
+                              : 'border-red-500 bg-transparent shadow-[0_0_0_1px_rgba(239,68,68,0.35)]'
+                          }`}
+                        />
+                        <div
+                          className={`absolute rounded-sm border border-white/35 px-2.5 py-1.5 text-[12px] font-extrabold tracking-wide text-white shadow-lg ${
+                            det.color === 'green' ? 'bg-green-600' : 'bg-red-600'
+                          }`}
+                          style={getLabelStyle()}
+                        >
+                          <span className="block leading-tight">{det.class}</span>
+                          <span className="block whitespace-nowrap text-[12px] font-bold leading-tight">{det.confidence}%</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {systemState === 'capturing' && (
+                <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/20">
+                  <div className="absolute inset-0 animate-pulse border-[24px] border-white/25"></div>
+                  <Camera size={64} className="animate-bounce text-white" />
+                </div>
+              )}
+
+              {systemState === 'analyzing' && (
+                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/55">
+                  <div className="relative h-72 w-72 overflow-hidden rounded-xl border-2 border-[#9cd4ad]/80">
+                    <div className="absolute left-0 top-0 h-1 w-full animate-[scan_1.6s_linear_infinite] bg-[#b8f4c5] shadow-[0_0_22px_#b8f4c5]"></div>
+                  </div>
+                  <p className="mt-6 flex items-center gap-2 text-xl font-bold text-[#d6f6de]">
+                    <Activity size={22} className="animate-spin" /> YOLO Inference Running...
+                  </p>
+                </div>
+              )}
+
+              {systemState === 'result' && currentResult && (
+                <div className="absolute right-5 top-5 z-30 rounded-xl border border-white/60 bg-white/95 px-5 py-3 shadow-xl">
+                  <p className="text-sm font-bold uppercase tracking-[0.18em] text-slate-500">Inspection Result</p>
+                  <p className={`text-3xl font-extrabold ${resultIsGood ? 'text-green-600' : 'text-red-600'}`}>
+                    {resultIsGood ? 'PASS' : 'FAIL'}
+                  </p>
+                  <p className="text-xl font-bold text-slate-700">{currentResult.confidence}% Confidence</p>
+                </div>
+              )}
+
+              <div className="absolute left-5 top-5 z-30 rounded-full bg-red-600 px-4 py-1 text-sm font-extrabold tracking-[0.12em] text-white shadow-lg">
+                LIVE
+              </div>
+            </div>
           </div>
 
-          {/* Controls */}
-          <div className="grid grid-cols-3 gap-4">
-             <div className="relative group">
-                <input type="file" ref={fileInputRef} onChange={handleSensorTrigger} accept="image/*" className="hidden" id="sensor-trigger" />
-                
-                {/* 1. Updated Trigger Button: Theme Color + Darker Hover */}
-                <label htmlFor="sensor-trigger" className={`h-full flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed transition-all cursor-pointer shadow-sm bg-[#EBF4DD] border-[#B8DB80] hover:bg-[#8bc598] hover:border-[#7A9B45]`}>
-                    <Scan size={24} className="text-[#556B2F] mb-2" />
-                    <span className="font-bold text-slate-800 text-sm">Trigger Sensor</span>
-                    <span className="text-[10px] text-slate-600">(Upload Image)</span>
-                </label>
-             </div>
-             
-             {/* 3. Updated Reset Button: White/Theme Neutral + Red Hover */}
-             <button onClick={handleReset} className="bg-white border border-gray-300 hover:bg-red-50 hover:border-red-400 rounded-xl p-4 flex flex-col items-center justify-center transition-all group shadow-sm">
-                 <RotateCcw size={24} className="text-slate-500 group-hover:text-red-600 transition-transform group-hover:-rotate-180" />
-                 <span className="mt-2 text-sm font-medium text-slate-600 group-hover:text-red-700">Reset System</span>
-             </button>
-             
-             <button onClick={handleDownloadLabel} disabled={systemState !== 'result'} className={`rounded-xl p-4 flex flex-col items-center justify-center border transition-all shadow-sm ${systemState === 'result' ? 'bg-emerald-50 border-emerald-200 cursor-pointer hover:bg-emerald-100 hover:border-emerald-300' : 'bg-gray-100 border-gray-200 opacity-50'}`}>
-                 <Printer size={24} className={systemState === 'result' ? 'text-emerald-600' : 'text-slate-400'} />
-                 <span className={`mt-2 text-sm font-medium ${systemState === 'result' ? 'text-emerald-700' : 'text-slate-400'}`}>Print Label</span>
-             </button>
+          <div className="mt-4 shrink-0 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleSensorTrigger}
+                accept="image/*"
+                className="hidden"
+                id="sensor-trigger"
+              />
+              <label
+                htmlFor="sensor-trigger"
+                className="flex h-full cursor-pointer flex-col items-center justify-center rounded-2xl border border-green-700 bg-green-600 px-4 py-6 text-center shadow-lg transition-all hover:-translate-y-0.5 hover:bg-green-700"
+              >
+                <Scan size={30} className="text-white" />
+                <span className="mt-2 text-xl font-extrabold text-white">Trigger Sensor</span>
+                <span className="text-sm font-semibold text-green-100">Upload Board Image</span>
+              </label>
+            </div>
+
+            <button
+              onClick={handleReset}
+              className="flex flex-col items-center justify-center rounded-2xl border border-slate-400 bg-slate-300 px-4 py-6 text-center shadow-lg transition-all hover:-translate-y-0.5 hover:bg-slate-400"
+            >
+              <RotateCcw size={30} className="text-slate-800" />
+              <span className="mt-2 text-xl font-extrabold text-slate-800">Reset System</span>
+            </button>
+
+            <button
+              onClick={handleDownloadLabel}
+              disabled={systemState !== 'result'}
+              className={`flex flex-col items-center justify-center rounded-2xl border px-4 py-6 text-center shadow-lg transition-all ${
+                systemState === 'result'
+                  ? 'border-blue-700 bg-blue-600 hover:-translate-y-0.5 hover:bg-blue-700'
+                  : 'cursor-not-allowed border-slate-300 bg-slate-200 opacity-70'
+              }`}
+            >
+              <Printer size={30} className={systemState === 'result' ? 'text-white' : 'text-slate-500'} />
+              <span className={`mt-2 text-xl font-extrabold ${systemState === 'result' ? 'text-white' : 'text-slate-500'}`}>
+                Print Label
+              </span>
+            </button>
           </div>
         </section>
 
-        {/* RIGHT: Stats & Logs */}
-        <section className="lg:col-span-4 flex flex-col gap-6">
-           
-           {/* Status Card */}
-           <div className={`p-6 rounded-2xl border flex flex-col items-center text-center justify-center shadow-md transition-all duration-500 min-h-[220px] bg-white ${!currentResult ? 'border-gray-200' : currentResult.color === 'green' ? 'border-green-400 bg-green-50' : 'border-red-400 bg-red-50'}`}>
-                {!currentResult ? (
-                     <div className="flex flex-col items-center gap-2 text-slate-400">
-                         <Activity size={32} />
-                         <span>Ready for Inspection...</span>
-                     </div>
-                ) : (
-                     <>
-                        <h2 className="text-slate-500 text-xs uppercase tracking-widest mb-1 font-bold">Inspection Result</h2>
-                        <div className={`text-4xl font-black mb-1 ${currentResult.color === 'green' ? 'text-green-600' : 'text-red-600'}`}>{currentResult.color === 'green' ? 'PASS' : 'FAIL'}</div>
-                        <div className="bg-white/60 px-3 py-1 rounded text-xs text-slate-600 border border-black/5 mb-3 font-medium shadow-sm">Primary: {currentResult.details}</div>
-                        
-                        <div className="w-full text-left px-2 bg-white/50 rounded-lg py-2 border border-black/5 mb-3">
-                           <p className="text-[10px] text-slate-500 mb-1 font-bold uppercase">Defects Found ({currentResult.all_detections.length})</p>
-                           <div className="max-h-20 overflow-y-auto custom-scrollbar pr-1">
-                               {currentResult.all_detections.map((d,i) => (
-                                   <div key={i} className="flex justify-between text-xs mb-1 border-b border-black/5 pb-1 last:border-0">
-                                       <span className={d.color==='red'?'text-red-600 font-medium':'text-green-600 font-medium'}>{d.class}</span>
-                                       <span className="text-slate-500">{d.confidence}%</span>
-                                   </div>
-                               ))}
-                           </div>
+        <section className="flex min-h-0 flex-col gap-5 xl:col-span-4">
+          <div
+            className={`rounded-3xl border-2 p-6 shadow-[0_14px_30px_rgba(33,58,79,0.14)] ${
+              !currentResult
+                ? 'border-slate-300 bg-white'
+                : resultIsGood
+                  ? 'border-green-400 bg-[#eefaf1]'
+                  : 'border-red-400 bg-[#fff1f1]'
+            }`}
+          >
+            <p className="text-sm font-extrabold uppercase tracking-[0.2em] text-slate-500">Inspection Result</p>
+            {!currentResult ? (
+              <div className="mt-5 flex items-center gap-3 text-lg font-semibold text-slate-500">
+                <Activity size={30} /> Waiting for sensor trigger...
+              </div>
+            ) : (
+              <>
+                <div className={`mt-3 text-6xl font-black ${resultIsGood ? 'text-green-600' : 'text-red-600'}`}>
+                  {resultIsGood ? 'PASS' : 'FAIL'}
+                </div>
+                <p className="mt-2 text-2xl font-extrabold text-slate-800">{currentResult.confidence}% CONFIDENCE</p>
+                <p className="mt-3 rounded-xl border border-slate-300 bg-white px-4 py-3 text-lg font-bold text-slate-700">
+                  Class: {currentResult.details}
+                </p>
+
+                <div className="mt-4 rounded-xl border border-slate-300 bg-white p-3">
+                  <p className="text-sm font-extrabold uppercase tracking-[0.15em] text-slate-500">
+                    Detected Defects ({detections.length})
+                  </p>
+                  <div className="custom-scrollbar mt-2 max-h-28 space-y-2 overflow-y-auto pr-1">
+                    {detections.length === 0 ? (
+                      <p className="text-base font-semibold text-green-700">No defect detected</p>
+                    ) : (
+                      detections.map((d, i) => (
+                        <div key={`${d.class}-${i}`} className="flex items-center justify-between text-base">
+                          <span className={d.color === 'red' ? 'font-bold text-red-600' : 'font-bold text-green-600'}>{d.class}</span>
+                          <span className="font-bold text-slate-600">{d.confidence}%</span>
                         </div>
-
-                        {/* Human Verification */}
-                        <div className="w-full pt-3 border-t border-black/10">
-                            {!verificationStatus ? (
-                                <div className="flex justify-center gap-2">
-                                    <button onClick={() => handleVerification(true)} className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 hover:border-green-500 hover:text-green-600 text-slate-600 rounded-lg text-xs font-bold transition-all shadow-sm">
-                                        <ThumbsUp size={14} /> Correct
-                                    </button>
-                                    <button onClick={() => handleVerification(false)} className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 hover:border-orange-500 hover:text-orange-600 text-slate-600 rounded-lg text-xs font-bold transition-all shadow-sm">
-                                        <ThumbsDown size={14} /> Incorrect
-                                    </button>
-                                </div>
-                            ) : (
-                                <div className={`text-xs font-bold flex items-center justify-center gap-2 ${verificationStatus === 'correct' ? 'text-green-600' : 'text-orange-600'}`}>
-                                    {verificationStatus === 'correct' ? <CheckCircle size={14}/> : <AlertTriangle size={14}/>} Recorded
-                                </div>
-                            )}
-                        </div>
-                     </>
-                )}
-           </div>
-
-           {/* Stats Cards */}
-           <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-                  <div className="text-slate-400 text-[10px] uppercase font-bold mb-1">Total Scanned</div>
-                  <div className="text-3xl font-mono text-slate-800">{stats.total}</div>
-              </div>
-              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-                  <div className="text-slate-400 text-[10px] uppercase font-bold mb-1">Defect Rate</div>
-                  <div className="text-3xl font-mono text-red-500">{stats.total > 0 ? ((stats.defective / stats.total) * 100).toFixed(0) : 0}<span className="text-sm">%</span></div>
-              </div>
-           </div>
-
-           {/* Logs - Updated Header Color & Logic */}
-           <div className="flex-1 bg-white rounded-xl border border-gray-200 flex flex-col overflow-hidden shadow-sm">
-              <div className="p-3 bg-[#ABE7B2] border-b border-gray-200 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                      <Database size={16} className="text-slate-800" />
-                      <span className="text-sm font-bold text-slate-800">Database Logs</span>
-                  </div>
-                  <button onClick={handleExportCSV} className="flex items-center gap-1 text-[10px] bg-white hover:bg-white/80 text-slate-700 border border-gray-200 px-2 py-1 rounded transition-colors shadow-sm">
-                      <FileText size={12} /> CSV
-                  </button>
-              </div>
-              {/* 4. Scrollable Log Box (Max Height) */}
-              <div className="overflow-y-auto p-2 space-y-2 custom-scrollbar max-h-[300px] lg:max-h-[calc(100vh-500px)]">
-                  {logs.length === 0 ? (
-                      <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60 min-h-[100px]">
-                          <Server size={32} className="mb-2" />
-                          <p className="text-xs">Database Empty</p>
-                      </div>
-                  ) : (
-                      logs.map((log, i) => (
-                          <div key={i} className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-100 hover:border-[#ABE7B2] hover:shadow-md transition-all group">
-                              <div className="flex items-center gap-3">
-                                  <div className={`w-1.5 h-8 rounded-full ${log.color === 'green' ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                                  <div>
-                                      <div className="text-xs font-bold text-slate-800">{log.id}</div>
-                                      <div className="text-[10px] text-slate-500 flex items-center gap-1">
-                                          {/* Show Verification Status in Log */}
-                                          {log.verification && (
-                                              <span className={`flex items-center gap-0.5 ${log.verification === 'Correct' ? 'text-green-600' : 'text-orange-500'}`}>
-                                                  {log.verification === 'Correct' ? <CheckCheck size={10}/> : <AlertTriangle size={10}/>}
-                                              </span>
-                                          )}
-                                          <span>{log.all_detections ? log.all_detections.length : 0} items</span>
-                                      </div>
-                                  </div>
-                              </div>
-                              <div className={`text-[10px] font-bold px-2 py-1 rounded ${log.color === 'green' ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-red-50 text-red-600 border border-red-100'}`}>
-                                  {log.color === 'green' ? 'PASS' : 'FAIL'}
-                              </div>
-                          </div>
                       ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-5 border-t border-slate-300 pt-4">
+                  {!verificationStatus ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => handleVerification(true)}
+                        className="flex items-center justify-center gap-2 rounded-xl border border-green-400 bg-white px-3 py-3 text-base font-bold text-green-700 transition-all hover:bg-green-50"
+                      >
+                        <ThumbsUp size={18} /> Correct
+                      </button>
+                      <button
+                        onClick={() => handleVerification(false)}
+                        className="flex items-center justify-center gap-2 rounded-xl border border-orange-400 bg-white px-3 py-3 text-base font-bold text-orange-700 transition-all hover:bg-orange-50"
+                      >
+                        <ThumbsDown size={18} /> Incorrect
+                      </button>
+                    </div>
+                  ) : (
+                    <div className={`flex items-center justify-center gap-2 text-lg font-extrabold ${verificationStatus === 'correct' ? 'text-green-700' : 'text-orange-700'}`}>
+                      {verificationStatus === 'correct' ? <CheckCircle size={20} /> : <AlertTriangle size={20} />}
+                      Review Recorded
+                    </div>
                   )}
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-2">
+            <div className="rounded-2xl border-2 border-[#8ab59a] bg-white p-5 shadow-md">
+              <p className="text-sm font-extrabold uppercase tracking-[0.15em] text-slate-500">Total Scanned</p>
+              <p className="mt-2 text-5xl font-black text-slate-800">{stats.total}</p>
+            </div>
+            <div className="rounded-2xl border-2 border-[#cc8c8c] bg-white p-5 shadow-md">
+              <p className="text-sm font-extrabold uppercase tracking-[0.15em] text-slate-500">Defect Rate</p>
+              <p className="mt-2 text-5xl font-black text-red-600">{defectRate}%</p>
+            </div>
+          </div>
+
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border-2 border-slate-300 bg-white shadow-[0_14px_30px_rgba(33,58,79,0.1)]">
+            <div className="flex items-center justify-between border-b border-slate-200 bg-[#e3efdb] px-5 py-4">
+              <div className="flex items-center gap-2">
+                <Database size={20} className="text-slate-700" />
+                <p className="text-xl font-extrabold text-slate-800">Database Logs</p>
               </div>
-           </div>
+              <button
+                onClick={handleExportCSV}
+                className="flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 transition-all hover:bg-slate-100"
+              >
+                <FileText size={15} /> Export CSV
+              </button>
+            </div>
+
+            <div className="custom-scrollbar flex-1 space-y-3 overflow-y-auto p-4">
+              {logs.length === 0 ? (
+                <div className="flex min-h-[150px] flex-col items-center justify-center text-slate-400">
+                  <Server size={42} />
+                  <p className="mt-2 text-lg font-semibold">No records yet</p>
+                </div>
+              ) : (
+                logs.map((log, i) => (
+                  <div
+                    key={`${log.id}-${i}`}
+                    className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-3 transition-all hover:bg-white hover:shadow-sm"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`h-10 w-2 rounded-full ${log.color === 'green' ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                      <div>
+                        <p className="text-base font-bold text-slate-800">{log.id}</p>
+                        <p className="text-sm font-semibold text-slate-500">
+                          {log.all_detections?.length || 0} detections
+                          {log.verification && (
+                            <span className={`ml-2 inline-flex items-center gap-1 font-bold ${log.verification === 'Correct' ? 'text-green-700' : 'text-orange-700'}`}>
+                              {log.verification === 'Correct' ? <CheckCheck size={14} /> : <AlertTriangle size={14} />}
+                              {log.verification}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    <p className={`rounded-lg px-3 py-1 text-base font-extrabold ${log.color === 'green' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {log.color === 'green' ? 'PASS' : 'FAIL'}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </section>
       </main>
 
-      {/* Notification Toast */}
       {notification && (
-        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 z-50 animate-bounce">
-            <Wifi size={16} className="text-[#ABE7B2]" />
-            <span className="text-xs font-bold tracking-wide">{notification}</span>
+        <div className="fixed bottom-7 left-1/2 z-50 -translate-x-1/2 rounded-full border border-slate-200 bg-white px-8 py-3 text-lg font-bold text-slate-700 shadow-2xl">
+          <span className="mr-2 inline-flex align-middle">
+            <Wifi size={20} className="text-[#3f8f66]" />
+          </span>
+          {notification}
         </div>
       )}
 
-      <style>{`
-        @keyframes scan { 0% { top: 0%; } 100% { top: 100%; } }
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-      `}</style>
+      <style>{`@keyframes scan { 0% { top: 0%; } 100% { top: 100%; } }`}</style>
     </div>
   );
 };
 
 export default DefectoMCUDashboardLight;
-

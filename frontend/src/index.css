@@ -1,10 +1,18 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+body {
+  font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+  color: #1f2937;
+  background: #edf4e8;
+}
+
 /* Custom Scrollbar Styles */
 @layer utilities {
-  .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+  .custom-scrollbar::-webkit-scrollbar { width: 8px; }
   .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
-  .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+  .custom-scrollbar::-webkit-scrollbar-thumb { background: #8fa6b3; border-radius: 8px; }
 }
